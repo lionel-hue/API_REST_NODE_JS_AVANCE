@@ -1,10 +1,6 @@
 import prisma from "#lib/prisma";
 import { hashPassword, verifyPassword } from "#lib/password";
-import {
-  ConflictException,
-  UnauthorizedException,
-  NotFoundException,
-} from "#lib/exceptions";
+import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
 
 export class UserService {
   static async register(data) {

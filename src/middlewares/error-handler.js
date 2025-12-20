@@ -1,5 +1,5 @@
-import { HttpException } from "../lib/exceptions.js";
-import { logger } from "../lib/logger.js";
+import { HttpException } from "#lib/exceptions";
+import { logger } from "#lib/logger";
 
 export function errorHandler(err, req, res, next) {
   if (err instanceof HttpException) {
@@ -45,3 +45,4 @@ export function errorHandler(err, req, res, next) {
     ...(!isProduction && { stack: err.stack }),
   });
 }
+
