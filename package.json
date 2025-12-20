@@ -9,7 +9,8 @@
     "#middlewares/*": "./src/middlewares/*.js",
     "#routes/*": "./src/routes/*.js",
     "#schemas/*": "./src/schemas/*.js",
-    "#dto/*": "./src/dto/*.js"
+    "#dto/*": "./src/dto/*.js",
+    "#config/*": "./src/config/*.js"
   },
   "scripts": {
     "dev": "node --watch src/index.js",

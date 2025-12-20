@@ -4,4 +4,3 @@ prisma/dev.db
 prisma/dev.db-journal
 generated
 
-/generated/prisma

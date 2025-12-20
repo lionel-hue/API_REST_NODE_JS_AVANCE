@@ -9,9 +9,11 @@ import { logger, httpLogger } from "#lib/logger";
 import { errorHandler } from "#middlewares/error-handler";
 import { notFoundHandler } from "#middlewares/not-found";
 import userRouter from "#routes/user.routes";
+import authRouter from "#routes/auth.routes";
+import { config } from "#config/env";
 
 const app = express(***REMOVED***;
-const PORT = process.env.PORT || 3000;
+const PORT = config.PORT || 3000;
 
 // Middlewares
 app.use(helmet(***REMOVED******REMOVED***;
@@ -26,7 +28,7 @@ app.get("/", (req, res***REMOVED*** => {
 
 // Utilisation des routes
 app.use("/users", userRouter***REMOVED***;
-app.use("/", userRouter***REMOVED***; // Pour garder /register et /login à la racine
+app.use("/", authRouter***REMOVED***; // Pour garder /register et /login à la racine
 
 // 404 handler
 app.use(notFoundHandler***REMOVED***;

@@ -26,3 +26,4 @@ model Post {
   createdAt DateTime @default(now(***REMOVED******REMOVED***
   updatedAt DateTime @updatedAt
 }
+

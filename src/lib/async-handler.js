@@ -3,3 +3,4 @@ export function asyncHandler(fn***REMOVED*** {
     Promise.resolve(fn(req, res, next***REMOVED******REMOVED***.catch(next***REMOVED***;
   };
 }
+
