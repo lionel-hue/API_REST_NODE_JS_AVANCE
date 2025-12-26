@@ -1,6 +1,3 @@
-# README.md pour les Collaborateurs
-
-```markdown
 # API d'Authentification - Node.js/Express
 
 ## 📋 Description du Projet
@@ -36,7 +33,116 @@ cp .env.example .env
 nano .env
 ```
 
-### 4. Initialiser la base de données
+### 4. Configurer le schéma de base de données
+Dans `prisma/schema.prisma`, coller le schéma suivant :
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL"***REMOVED***
+}
+
+model User {
+  id                  String               @id @default(uuid(***REMOVED******REMOVED***
+  email               String               @unique
+  password            String?
+  firstName           String
+  lastName            String
+  emailVerifiedAt     DateTime?
+  twoFactorSecret     String?
+  twoFactorEnabledAt  DateTime?
+  disabledAt          DateTime?
+  createdAt           DateTime             @default(now(***REMOVED******REMOVED***
+  updatedAt           DateTime             @updatedAt
+  
+  // Relations
+  oauthAccounts       OAuthAccount[]
+  refreshTokens       RefreshToken[]
+  blacklistedTokens   BlacklistedAccessToken[]
+  verificationTokens  VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  loginHistories      LoginHistory[]
+
+  @@map("users"***REMOVED***
+}
+
+model OAuthAccount {
+  id         String   @id @default(uuid(***REMOVED******REMOVED***
+  provider   String
+  providerId String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  createdAt  DateTime @default(now(***REMOVED******REMOVED***
+
+  @@unique([provider, providerId]***REMOVED***
+  @@map("oauth_accounts"***REMOVED***
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid(***REMOVED******REMOVED***
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+
+  @@map("refresh_tokens"***REMOVED***
+}
+
+model BlacklistedAccessToken {
+  id        String   @id @default(uuid(***REMOVED******REMOVED***
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  expiresAt DateTime
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+
+  @@map("blacklisted_access_tokens"***REMOVED***
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid(***REMOVED******REMOVED***
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  expiresAt DateTime
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+
+  @@map("verification_tokens"***REMOVED***
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid(***REMOVED******REMOVED***
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  expiresAt DateTime
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+
+  @@map("password_reset_tokens"***REMOVED***
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid(***REMOVED******REMOVED***
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  ipAddress String?
+  userAgent String?
+  success   Boolean
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+
+  @@map("login_histories"***REMOVED***
+}
+```
+
+### 5. Initialiser la base de données
 ```bash
 # Générer le client Prisma
 npm run db:generate
@@ -48,7 +154,7 @@ npm run db:push
 npm run db:studio
 ```
 
-### 5. Lancer le serveur
+### 6. Lancer le serveur
 ```bash
 # Mode développement (avec rechargement automatique***REMOVED***
 npm run dev
@@ -61,8 +167,8 @@ npm start
 ```
 API_REST_NODE_JS_AVANCE/
 ├── prisma/              # Configuration de la base de données
-│   ├── schema.prisma    # Modèles de données
-│   └── migrations/      # Migrations de base de données
+│   ├── schema.prisma    # Modèles de données (copier le schéma ci-dessus***REMOVED***
+│   └── dev.db           # Base de données SQLite (généré après db:push***REMOVED***
 ├── src/
 │   ├── config/          # Configuration (variables d'environnement***REMOVED***
 │   ├── controllers/     # Gestionnaires de requêtes HTTP
@@ -72,16 +178,18 @@ API_REST_NODE_JS_AVANCE/
 │   ├── routes/         # Définitions des routes
 │   ├── schemas/        # Schémas de validation (Zod***REMOVED***
 │   ├── services/       # Logique métier
-│   └── index.js        Point d'entrée de l'application
+│   └── index.js        # Point d'entrée de l'application
 ├── .env.example        # Modèle de variables d'environnement
-├── .gitignore          # Fichiers ignorés par Git
-└── package.json        # Dépendances et scripts
+├── .env               # Variables d'environnement (à créer***REMOVED***
+├── .gitignore         # Fichiers ignorés par Git
+├── package.json       # Dépendances et scripts
+└── README.md         # Ce fichier
 ```
 
 ## 🔧 Scripts Disponibles
 ```bash
-npm run dev      # Lance le serveur en mode développement
-npm start        # Lance le serveur en mode production
+npm run dev          # Lance le serveur en mode développement
+npm start            # Lance le serveur en mode production
 npm run db:generate  # Génère le client Prisma
 npm run db:push      # Synchronise la BDD avec le schéma
 npm run db:studio    # Ouvre Prisma Studio (interface web***REMOVED***
@@ -89,10 +197,15 @@ npm run db:studio    # Ouvre Prisma Studio (interface web***REMOVED***
 
 ## 🌐 Variables d'Environnement (.env***REMOVED***
 ```env
+# Server
 PORT=3000
 NODE_ENV=development
+
+# Database
 DATABASE_URL="file:./prisma/dev.db"
-JWT_SECRET=votre_super_secret_jwt_32_caracteres_minimum
+
+# JWT Tokens
+JWT_SECRET=votre_super_secret_jwt_32_caracteres_minimum_change_this
 JWT_ACCESS_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 
@@ -102,20 +215,31 @@ GOOGLE_CLIENT_SECRET=votre_client_secret_google
 GITHUB_CLIENT_ID=votre_client_id_github
 GITHUB_CLIENT_SECRET=votre_client_secret_github
 
-# Email (pour le membre 2***REMOVED***
+# Email (pour le membre 2 - Mailtrap pour développement***REMOVED***
 EMAIL_SMTP_HOST=smtp.mailtrap.io
 EMAIL_SMTP_PORT=2525
-EMAIL_USERNAME=votre_username
-EMAIL_PASSWORD=votre_password
+EMAIL_USERNAME=votre_mailtrap_username
+EMAIL_PASSWORD=votre_mailtrap_password
+EMAIL_FROM=noreply@yourapp.com
 
+# App URL
 APP_URL=http://localhost:3000
 ```
 
 ## 📚 Base de Données
 Le projet utilise **SQLite** avec **Prisma ORM** :
-- Schéma : `prisma/schema.prisma`
-- Client généré : `node_modules/.prisma/client`
-- Fichier BDD : `prisma/dev.db`
+- **Schéma** : `prisma/schema.prisma` (copier le schéma ci-dessus***REMOVED***
+- **Client généré** : `node_modules/.prisma/client` (après `db:generate`***REMOVED***
+- **Fichier BDD** : `prisma/dev.db` (créé après `db:push`***REMOVED***
+
+**Modèles principaux :**
+- `User` : Utilisateurs
+- `OAuthAccount` : Comptes OAuth liés (Google/GitHub***REMOVED***
+- `RefreshToken` : Tokens de rafraîchissement et sessions
+- `BlacklistedAccessToken` : Tokens révoqués avant expiration
+- `VerificationToken` : Vérification d'email
+- `PasswordResetToken` : Réinitialisation de mot de passe
+- `LoginHistory` : Historique des connexions
 
 ## 🛠️ Workflow de Développement
 
@@ -209,23 +333,19 @@ Utiliser **Yaak** ou **Postman** :
 
 ---
 
-**Bonne chance à tous !** 🚀
-```
-
----
-
-# Plan d'Action Immédiat pour Chaque Membre
+## Plan d'Action Immédiat pour Chaque Membre
 
 **À faire aujourd'hui :**
 1. **Tous** : Cloner le repo et exécuter `npm install`
 2. **Tous** : Créer votre branche de fonctionnalité
 3. **Tous** : Lire et comprendre la partie qui vous concerne
-4. **Membre 5** : Créer le README.md et .gitignore
-5. **Tous** : Commencer l'implémentation de vos premiers endpoints
+4. **Tous** : Configurer le schéma Prisma comme indiqué ci-dessus
+5. **Tous** : Exécuter `npm run db:generate` et `npm run db:push`
+6. **Tous** : Commencer l'implémentation de vos premiers endpoints
 
 **D'ici demain :**
 - Avoir au moins 2 endpoints fonctionnels par membre
 - Avoir une première version de la collection Yaak/Postman
 - Avoir le schéma Prisma complet et synchronisé
 
-Vous êtes prêts ? Commencez maintenant ! 💪
+**Bonne chance à tous !** 🚀
