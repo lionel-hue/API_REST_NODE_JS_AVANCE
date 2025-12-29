@@ -8,6 +8,7 @@ dotenv.config(***REMOVED***;
 import { logger, httpLogger } from "#lib/logger";
 import { errorHandler } from "#middlewares/error-handler";
 import { notFoundHandler } from "#middlewares/not-found";
+import { auth } from "#middlewares/auth";
 import userRouter from "#routes/user.routes";
 import authRouter from "#routes/auth.routes";
 import { config } from "#config/env";
@@ -20,6 +21,8 @@ app.use(helmet(***REMOVED******REMOVED***;
 app.use(cors(***REMOVED******REMOVED***;
 app.use(httpLogger***REMOVED***;
 app.use(express.json(***REMOVED******REMOVED***;
+// Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer***REMOVED***
+app.set('trust proxy', true***REMOVED***;
 
 // Routes
 app.get("/", (req, res***REMOVED*** => {
@@ -27,8 +30,8 @@ app.get("/", (req, res***REMOVED*** => {
 }***REMOVED***;
 
 // Utilisation des routes
-app.use("/users", userRouter***REMOVED***;
-app.use("/", authRouter***REMOVED***; // Pour garder /register et /login à la racine
+app.use("/api/auth", authRouter***REMOVED***;
+app.use("/api/users", userRouter***REMOVED***;
 
 // 404 handler
 app.use(notFoundHandler***REMOVED***;
