@@ -1,10 +1,6 @@
-import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 
-const connectionString = process.env.DATABASE_URL;
-
-const adapter = new PrismaBetterSqlite3({ url: connectionString }***REMOVED***;
-const prisma = new PrismaClient({ adapter }***REMOVED***;
+const prisma = new PrismaClient(***REMOVED***;
 
 export default prisma;
