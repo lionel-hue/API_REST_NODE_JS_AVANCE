@@ -14,6 +14,7 @@ app.post('/verify2FA', rateLimit, twoFactorController.verify2FA***REMOVED***;
 app.post('/sessions', rateLimit, sessionController.create***REMOVED***;
 app.get('/sessions', rateLimit, sessionController.list***REMOVED***;
 app.delete('/sessions', rateLimit, sessionController.delete***REMOVED***;
+app.get('/login-history', twoFactorController.getLoginHistory***REMOVED***;
 
 // Lancer le serveur
 const PORT = 3000;
