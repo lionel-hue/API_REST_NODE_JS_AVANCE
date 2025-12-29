@@ -81,8 +81,8 @@ API_REST_NODE_JS_AVANCE/
 ## 🔧 Scripts Disponibles
 ```bash
 npm run dev      # Lance le serveur en mode développement
-npm start        # Lance le serveur en mode production
-npm run db:generate  # Génère le client Prisma
+npm start n       # Lance le serveur en mode production
+pm run db:generate  # Génère le client Prisma
 npm run db:push      # Synchronise la BDD avec le schéma
 npm run db:studio    # Ouvre Prisma Studio (interface web***REMOVED***
 ```
