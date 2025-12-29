@@ -97,7 +97,7 @@ src/services/session.service.js
 4. Créer endpoints pour gérer les sessions : GET/DELETE `/api/sessions`
 
 ---
-
+ 
 ## 👥 **Membre 5 : Gestion de Profil & Coordination**
 **Responsabilités principales :**
 - CRUD du profil utilisateur
