@@ -18,6 +18,7 @@ router.get(
   "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
+    session: false  // ← ADD THIS LINE
   }),
   initiateGoogleOAuth
 );
@@ -31,6 +32,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     failureRedirect: "/login?error=google_auth_failed",
+    session: false  // ← ADD THIS LINE
   }),
   handleGoogleCallback
 );
@@ -44,6 +46,7 @@ router.get(
   "/github",
   passport.authenticate("github", {
     scope: ["user:email"],
+    session: false  // ← ADD THIS LINE
   }),
   initiateGitHubOAuth
 );
@@ -57,6 +60,7 @@ router.get(
   "/github/callback",
   passport.authenticate("github", {
     failureRedirect: "/login?error=github_auth_failed",
+    session: false  // ← ADD THIS LINE
   }),
   handleGitHubCallback
 );
