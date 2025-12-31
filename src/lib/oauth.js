@@ -54,7 +54,8 @@ export function initializePassportStrategies(***REMOVED*** {
         clientSecret: config.GITHUB_CLIENT_SECRET,
         callbackURL: `${config.APP_URL}/api/oauth/github/callback`,
         passReqToCallback: true,
-      },
+        scope : ["user.email"]
+      },``
       (req, accessToken, refreshToken, profile, done***REMOVED*** => {
         logger.info(`GitHub OAuth callback received for profile: ${profile.id}`***REMOVED***;
         
