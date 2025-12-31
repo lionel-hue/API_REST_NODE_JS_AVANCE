@@ -11,10 +11,15 @@ import { notFoundHandler } from "#middlewares/not-found";
 import { auth } from "#middlewares/auth";
 import userRouter from "#routes/user.routes";
 import authRouter from "#routes/auth.routes";
+import oauthRouter from "#routes/oauth.routes";
 import { config } from "#config/env";
+import passport, { initializePassportStrategies } from "#lib/oauth";
 
 const app = express(***REMOVED***;
 const PORT = config.PORT || 3000;
+
+// Initialiser les stratégies Passport OAuth
+initializePassportStrategies(***REMOVED***;
 
 // Middlewares
 app.use(helmet(***REMOVED******REMOVED***;
@@ -24,6 +29,9 @@ app.use(express.json(***REMOVED******REMOVED***;
 // Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer***REMOVED***
 app.set('trust proxy', true***REMOVED***;
 
+// Initialiser Passport
+app.use(passport.initialize(***REMOVED******REMOVED***;
+
 // Routes
 app.get("/", (req, res***REMOVED*** => {
   res.json({ success: true, message: "API Express opérationnelle" }***REMOVED***;
@@ -32,6 +40,7 @@ app.get("/", (req, res***REMOVED*** => {
 // Utilisation des routes
 app.use("/api/auth", authRouter***REMOVED***;
 app.use("/api/users", userRouter***REMOVED***;
+app.use("/api/oauth", oauthRouter***REMOVED***;
 
 // 404 handler
 app.use(notFoundHandler***REMOVED***;
@@ -40,5 +49,5 @@ app.use(notFoundHandler***REMOVED***;
 app.use(errorHandler***REMOVED***;
 
 app.listen(PORT, (***REMOVED*** => {
-  logger.info(`Serveur démarré sur <http://localhost>:${PORT}`***REMOVED***;
+  logger.info(`Serveur démarré sur http://localhost:${PORT}`***REMOVED***;
 }***REMOVED***;
