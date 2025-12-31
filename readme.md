@@ -19,7 +19,7 @@ cd API_REST_NODE_JS_AVANCE
 
 ### 2. Installer les dépendances
 ```bash
-npm install
+
 # ou avec pnpm
 pnpm install
 ```
@@ -37,7 +37,7 @@ nano .env
 Dans `prisma/schema.prisma`, coller le schéma suivant :
 
 ```prisma
-generator client {
+`generator client {
   provider = "prisma-client-js"
 }
 
@@ -202,7 +202,7 @@ PORT=3000
 NODE_ENV=development
 
 # Database
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./pri`sma/dev.db"
 
 # JWT Tokens
 JWT_SECRET=votre_super_secret_jwt_32_caracteres_minimum_change_this
