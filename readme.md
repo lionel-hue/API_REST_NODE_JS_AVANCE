@@ -332,20 +332,3 @@ Utiliser **Yaak** ou **Postman** :
 3. Contacter le responsable de votre section
 
 ---
-
-## Plan d'Action Immédiat pour Chaque Membre
-
-**À faire aujourd'hui :**
-1. **Tous** : Cloner le repo et exécuter `npm install`
-2. **Tous** : Créer votre branche de fonctionnalité
-3. **Tous** : Lire et comprendre la partie qui vous concerne
-4. **Tous** : Configurer le schéma Prisma comme indiqué ci-dessus
-5. **Tous** : Exécuter `npm run db:generate` et `npm run db:push`
-6. **Tous** : Commencer l'implémentation de vos premiers endpoints
-
-**D'ici demain :**
-- Avoir au moins 2 endpoints fonctionnels par membre
-- Avoir une première version de la collection Yaak/Postman
-- Avoir le schéma Prisma complet et synchronisé
-
-**Bonne chance à tous !** 🚀
