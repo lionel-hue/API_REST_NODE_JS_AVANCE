@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Membre 4 - 2FA & Sessions",
+    "_postman_id": "12345678-1234-1234-1234-123456789abc",
+    "description": "Collection pour tester tous les endpoints du Membre 4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup 2FA",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/setup2FA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["setup2FA"]
+        }
+      }
+    },
+    {
+      "name": "Verify 2FA",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/verify2FA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["verify2FA"]
+        }
+      }
+    },
+    {
+      "name": "Create Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/sessions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["sessions"]
+        }
+      }
+    },
+    {
+      "name": "List Sessions",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/sessions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["sessions"]
+        }
+      }
+    },
+    {
+      "name": "Delete Session",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sessionId\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/sessions?userId=1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["sessions"]
+        }
+      }
+    },
+    {
+      "name": "Login History",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/login-history",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["login-history"]
+        }
+      }
+    }
+  ]
+}
