@@ -12,6 +12,8 @@ import { auth } from "#middlewares/auth";
 import userRouter from "#routes/user.routes";
 import authRouter from "#routes/auth.routes";
 import oauthRouter from "#routes/oauth.routes";
+import emailRouter from "#routes/email.routes"; // Add this
+import passwordRouter from "#routes/password.routes"; // Add this
 import { config } from "#config/env";
 import passport, { initializePassportStrategies } from "#lib/oauth";
 
@@ -39,6 +41,8 @@ app.get("/", (req, res) => {
 
 // Utilisation des routes
 app.use("/api/auth", authRouter);
+app.use("/api/auth", emailRouter); // Add email routes under /api/auth
+app.use("/api/password", passwordRouter); // Add password routes
 app.use("/api/users", userRouter);
 app.use("/api/oauth", oauthRouter);
 

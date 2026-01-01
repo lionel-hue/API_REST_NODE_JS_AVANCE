@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from "#lib/password";
 import { signAccessToken, signRefreshToken, verifyToken } from "#lib/jwt";
 import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
 import { config } from "#config/env";
+import verificationService from './verification.service.js'; // Add this import
 
 /**
  * Calcule la date d'expiration à partir d'une chaîne comme "7d" ou "15m"
@@ -12,7 +13,7 @@ import { config } from "#config/env";
 function calculateExpirationDate(expiryString) {
   const date = new Date();
   const match = expiryString.match(/^(\d+)([dhms])$/);
-  
+
   if (!match) {
     // Par défaut, 7 jours si le format est invalide
     date.setDate(date.getDate() + 7);
@@ -69,62 +70,13 @@ export class AuthService {
         password: hashedPassword,
         firstName,
         lastName,
+        emailVerifiedAt: config.NODE_ENV === 'development' ? new Date() : null, // Auto-verify in dev
       },
     });
 
-    // Générer les tokens
-    const accessToken = await signAccessToken({ userId: user.id });
-    const refreshTokenValue = await signRefreshToken({ userId: user.id });
-
-    // Calculer la date d'expiration du refresh token
-    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
-    const expiresAt = calculateExpirationDate(refreshExpiry);
-
-    // Sauvegarder le refresh token en base
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshTokenValue,
-        userId: user.id,
-        userAgent,
-        ipAddress,
-        expiresAt,
-      },
-    });
-
-    // Retourner les données sans le mot de passe
-    const { password: _, ...userWithoutPassword } = user;
-
-    return {
-      user: userWithoutPassword,
-      accessToken,
-      refreshToken: refreshTokenValue,
-    };
-  }
-
-  /**
-   * Connexion d'un utilisateur
-   * @param {string} email - Email de l'utilisateur
-   * @param {string} password - Mot de passe
-   * @param {string} userAgent - User agent de la requête
-   * @param {string} ipAddress - Adresse IP de la requête
-   * @returns {Promise<Object>} Utilisateur avec tokens
-   */
-  static async login(email, password, userAgent, ipAddress) {
-    // Trouver l'utilisateur
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      throw new UnauthorizedException("Identifiants invalides");
-    }
-
-    // Vérifier le mot de passe
-    const isPasswordValid = await verifyPassword(user.password, password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException("Identifiants invalides");
-    }
-
-    // Vérifier si le compte est désactivé
-    if (user.disabledAt) {
-      throw new UnauthorizedException("Ce compte a été désactivé");
+    // Send verification email (except in development)
+    if (config.NODE_ENV !== 'development') {
+      await verificationService.createAndSendVerification(user);
     }
 
     // Générer les tokens
@@ -157,12 +109,12 @@ export class AuthService {
   }
 
   /**
-   * Déconnexion d'un utilisateur
-   * @param {string} accessToken - Access token à blacklister
-   * @param {string} refreshToken - Refresh token à révoquer
-   * @param {string} userId - ID de l'utilisateur
-   * @returns {Promise<void>}
-   */
+  * Déconnexion d'un utilisateur
+  * @param {string} accessToken - Access token à blacklister
+  * @param {string} refreshToken - Refresh token à révoquer
+  * @param {string} userId - ID de l'utilisateur
+  * @returns {Promise<void>}
+  */
   static async logout(accessToken, refreshToken, userId) {
     try {
       // Vérifier et décoder l'access token pour obtenir l'expiration
@@ -272,4 +224,3 @@ export class AuthService {
     };
   }
 }
-
