@@ -1,0 +1,1545 @@
+src:
+config
+controllers
+dto
+index.js
+lib
+middlewares
+routes
+schemas
+services
+
+src/config:
+env.js
+
+src/controllers:
+auth.controller.js
+oauth.controller.js
+user.controller.js
+
+src/dto:
+user.dto.js
+
+src/lib:
+async-handler.js
+exceptions.js
+jwt.js
+logger.js
+oauth.js
+password.js
+prisma.js
+validate.js
+
+src/middlewares:
+auth.js
+error-handler.js
+not-found.js
+
+src/routes:
+auth.routes.js
+oauth.routes.js
+user.routes.js
+
+src/schemas:
+auth.schema.js
+user.schema.js
+
+src/services:
+auth.service.js
+oauth.service.js
+user.service.js
+export class UserDto {
+  constructor(user***REMOVED*** {
+    this.id = user.id;
+    this.email = user.email;
+    this.name = user.name;
+    this.createdAt = user.createdAt;
+  }
+
+  // Cette méthode permet de transformer soit un utilisateur, soit une liste d'utilisateurs
+  static transform(data***REMOVED*** {
+    if (Array.isArray(data***REMOVED******REMOVED*** {
+      return data.map((user***REMOVED*** => new UserDto(user***REMOVED******REMOVED***;
+    }
+    return new UserDto(data***REMOVED***;
+  }
+}
+-------------------------------
+import dotenv from 'dotenv';
+
+dotenv.config(***REMOVED***;
+
+export const config = {
+  PORT: process.env.PORT || 3000,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  DATABASE_URL: process.env.DATABASE_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m',
+  JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d',
+  
+  // OAuth
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  APP_URL: process.env.APP_URL || 'http://localhost:3000',
+};-------------------------------
+import { Router } from "express";
+import { AuthController } from "#controllers/auth.controller";
+import { asyncHandler } from "#lib/async-handler";
+import { auth } from "#middlewares/auth";
+
+const router = Router(***REMOVED***;
+
+// Routes publiques
+router.post("/register", asyncHandler(AuthController.register***REMOVED******REMOVED***;
+router.post("/login", asyncHandler(AuthController.login***REMOVED******REMOVED***;
+router.post("/refresh", asyncHandler(AuthController.refresh***REMOVED******REMOVED***;
+
+// Routes protégées (nécessitent authentification***REMOVED***
+router.post("/logout", auth, asyncHandler(AuthController.logout***REMOVED******REMOVED***;
+
+export default router;
+-------------------------------
+import express from "express";
+import passport from "#lib/oauth";
+import {
+  initiateGoogleOAuth,
+  handleGoogleCallback,
+  initiateGitHubOAuth,
+  handleGitHubCallback,
+} from "#controllers/oauth.controller";
+
+const router = express.Router(***REMOVED***;
+
+/**
+ * GET /api/oauth/google
+ * Redirige l'utilisateur vers la page de connexion Google
+ * Passport gère automatiquement la redirection avec les paramètres OAuth
+ */
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false  // ← ADD THIS LINE
+  }***REMOVED***,
+  initiateGoogleOAuth
+***REMOVED***;
+
+/**
+ * GET /api/oauth/google/callback
+ * Callback de Google - Passport valide le code d'autorisation et remplit req.user
+ * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+ */
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login?error=google_auth_failed",
+    session: false  // ← ADD THIS LINE
+  }***REMOVED***,
+  handleGoogleCallback
+***REMOVED***;
+
+/**
+ * GET /api/oauth/github
+ * Redirige l'utilisateur vers la page de connexion GitHub
+ * Passport gère automatiquement la redirection avec les paramètres OAuth
+ */
+router.get(
+  "/github",
+  passport.authenticate("github", {
+    scope: ["user:email"],
+    session: false  // ← ADD THIS LINE
+  }***REMOVED***,
+  initiateGitHubOAuth
+***REMOVED***;
+
+/**
+ * GET /api/oauth/github/callback
+ * Callback de GitHub - Passport valide le code d'autorisation et remplit req.user
+ * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+ */
+router.get(
+  "/github/callback",
+  passport.authenticate("github", {
+    failureRedirect: "/login?error=github_auth_failed",
+    session: false  // ← ADD THIS LINE
+  }***REMOVED***,
+  handleGitHubCallback
+***REMOVED***;
+
+export default router;-------------------------------
+import { Router } from "express";
+import { UserController } from "#controllers/user.controller";
+import { asyncHandler } from "#lib/async-handler";
+import { auth } from "#middlewares/auth";
+
+const router = Router(***REMOVED***;
+
+// Consultation de la liste ou d'un utilisateur
+router.get("/", asyncHandler(UserController.getAll***REMOVED******REMOVED***;
+router.get("/:id", auth, asyncHandler(UserController.getById***REMOVED******REMOVED***;
+
+export default router;
+-------------------------------
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import dotenv from "dotenv";
+
+dotenv.config(***REMOVED***;
+
+import { logger, httpLogger } from "#lib/logger";
+import { errorHandler } from "#middlewares/error-handler";
+import { notFoundHandler } from "#middlewares/not-found";
+import { auth } from "#middlewares/auth";
+import userRouter from "#routes/user.routes";
+import authRouter from "#routes/auth.routes";
+import oauthRouter from "#routes/oauth.routes";
+import { config } from "#config/env";
+import passport, { initializePassportStrategies } from "#lib/oauth";
+
+const app = express(***REMOVED***;
+const PORT = config.PORT || 3000;
+
+// Initialiser les stratégies Passport OAuth
+initializePassportStrategies(***REMOVED***;
+
+// Middlewares
+app.use(helmet(***REMOVED******REMOVED***;
+app.use(cors(***REMOVED******REMOVED***;
+app.use(httpLogger***REMOVED***;
+app.use(express.json(***REMOVED******REMOVED***;
+// Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer***REMOVED***
+app.set('trust proxy', true***REMOVED***;
+
+// Initialiser Passport
+app.use(passport.initialize(***REMOVED******REMOVED***;
+
+// Routes
+app.get("/", (req, res***REMOVED*** => {
+  res.json({ success: true, message: "API Express opérationnelle" }***REMOVED***;
+}***REMOVED***;
+
+// Utilisation des routes
+app.use("/api/auth", authRouter***REMOVED***;
+app.use("/api/users", userRouter***REMOVED***;
+app.use("/api/oauth", oauthRouter***REMOVED***;
+
+// 404 handler
+app.use(notFoundHandler***REMOVED***;
+
+// Global error handler
+app.use(errorHandler***REMOVED***;
+
+app.listen(PORT, (***REMOVED*** => {
+  logger.info(`Serveur démarré sur http://localhost:${PORT}`***REMOVED***;
+}***REMOVED***;
+-------------------------------
+import { UnauthorizedException } from "#lib/exceptions";
+import { verifyToken } from "#lib/jwt";
+import { logger } from "#lib/logger";
+import prisma from "#lib/prisma";
+
+/**
+ * Middleware d'authentification complet
+ * Vérifie le token JWT, la blacklist, et ajoute l'utilisateur à la requête
+ * 
+ * Fonctionnalités :
+ * - Extraction et validation du token Bearer
+ * - Vérification de la blacklist des tokens révoqués
+ * - Vérification de la validité du token JWT
+ * - Vérification de l'existence et du statut de l'utilisateur
+ * - Ajout des informations utilisateur à req.user
+ */
+export async function auth(req, res, next***REMOVED*** {
+  try {
+    // Extraire le token du header Authorization
+    const bearerToken = req.headers["authorization"];
+    if (!bearerToken***REMOVED*** {
+      logger.warn("Tentative d'accès sans token d'authentification"***REMOVED***;
+      throw new UnauthorizedException("Token d'authentification manquant"***REMOVED***;
+    }
+
+    const tokenPart = bearerToken.split(" "***REMOVED***;
+    if (tokenPart[0] !== "Bearer" || !tokenPart[1]***REMOVED*** {
+      logger.warn("Format de token invalide"***REMOVED***;
+      throw new UnauthorizedException("Format de token invalide. Utilisez: Bearer <token>"***REMOVED***;
+    }
+
+    const token = tokenPart[1];
+
+    // Vérifier si le token est blacklisté (révoqué***REMOVED***
+    const blacklistedToken = await prisma.blacklistedAccessToken.findUnique({
+      where: { token },
+    }***REMOVED***;
+
+    if (blacklistedToken***REMOVED*** {
+      logger.warn(`Tentative d'utilisation d'un token révoqué pour l'utilisateur ${blacklistedToken.userId}`***REMOVED***;
+      throw new UnauthorizedException("Token révoqué"***REMOVED***;
+    }
+
+    // Vérifier et décoder le token JWT
+    let payload;
+    try {
+      payload = await verifyToken(token***REMOVED***;
+    } catch (error***REMOVED*** {
+      logger.warn("Token JWT invalide ou expiré"***REMOVED***;
+      throw new UnauthorizedException("Token invalide ou expiré"***REMOVED***;
+    }
+
+    if (!payload.userId***REMOVED*** {
+      logger.warn("Token sans userId"***REMOVED***;
+      throw new UnauthorizedException("Token invalide"***REMOVED***;
+    }
+
+    // Vérifier que l'utilisateur existe et n'est pas désactivé
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        disabledAt: true,
+      },
+    }***REMOVED***;
+
+    if (!user***REMOVED*** {
+      logger.warn(`Utilisateur ${payload.userId} non trouvé`***REMOVED***;
+      throw new UnauthorizedException("Utilisateur non trouvé"***REMOVED***;
+    }
+
+    if (user.disabledAt***REMOVED*** {
+      logger.warn(`Tentative d'accès avec un compte désactivé: ${user.email}`***REMOVED***;
+      throw new UnauthorizedException("Compte désactivé"***REMOVED***;
+    }
+
+    // Ajouter les informations de l'utilisateur à la requête
+    req.user = {
+      userId: user.id,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+
+    logger.debug(`Authentification réussie pour l'utilisateur: ${user.email}`***REMOVED***;
+    next(***REMOVED***;
+  } catch (error***REMOVED*** {
+    // Si c'est déjà une UnauthorizedException, la propager telle quelle
+    if (error instanceof UnauthorizedException***REMOVED*** {
+      throw error;
+    }
+    // Pour toute autre erreur, la transformer en UnauthorizedException
+    logger.error("Erreur dans le middleware d'authentification:", error***REMOVED***;
+    throw new UnauthorizedException("Token invalide ou expiré"***REMOVED***;
+  }
+}
+-------------------------------
+import { NotFoundException } from "#lib/exceptions";
+
+export function notFoundHandler(req, res, next***REMOVED*** {
+  throw new NotFoundException(`Route ${req.method} ${req.path} not found`***REMOVED***;
+}
+
+-------------------------------
+import { HttpException } from "#lib/exceptions";
+import { logger } from "#lib/logger";
+
+export function errorHandler(err, req, res, next***REMOVED*** {
+  if (err instanceof HttpException***REMOVED*** {
+    logger.warn({ err, path: req.path }, err.message***REMOVED***;
+  } else {
+    logger.error({ err, path: req.path }, "Unhandled error"***REMOVED***;
+  }
+
+  if (err instanceof HttpException***REMOVED*** {
+    return res.status(err.statusCode***REMOVED***.json({
+      success: false,
+      error: err.message,
+      ...(err.details && { details: err.details }***REMOVED***,
+    }***REMOVED***;
+  }
+
+  if (err.code === "P2002"***REMOVED*** {
+    return res.status(409***REMOVED***.json({
+      success: false,
+      error: "Resource already exists",
+    }***REMOVED***;
+  }
+
+  if (err.code === "P2025"***REMOVED*** {
+    return res.status(404***REMOVED***.json({
+      success: false,
+      error: "Resource not found",
+    }***REMOVED***;
+  }
+
+  if (err instanceof SyntaxError && err.status === 400***REMOVED*** {
+    return res.status(400***REMOVED***.json({
+      success: false,
+      error: "Invalid JSON",
+    }***REMOVED***;
+  }
+
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.status(500***REMOVED***.json({
+    success: false,
+    error: isProduction ? "Internal Server Error" : err.message,
+    ...(!isProduction && { stack: err.stack }***REMOVED***,
+  }***REMOVED***;
+}
+
+-------------------------------
+import { AuthService } from "#services/auth.service";
+import { validateData } from "#lib/validate";
+import { registerSchema, loginSchema, refreshTokenSchema } from "#schemas/auth.schema";
+
+export class AuthController {
+  /**
+   * Inscription d'un nouvel utilisateur
+   * POST /api/auth/register
+   */
+  static async register(req, res***REMOVED*** {
+    const validatedData = validateData(registerSchema, req.body***REMOVED***;
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.register(
+      validatedData,
+      userAgent,
+      ipAddress
+    ***REMOVED***;
+
+    res.status(201***REMOVED***.json({
+      success: true,
+      message: "Inscription réussie",
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        createdAt: result.user.createdAt,
+      },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }***REMOVED***;
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   * POST /api/auth/login
+   */
+  static async login(req, res***REMOVED*** {
+    const validatedData = validateData(loginSchema, req.body***REMOVED***;
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.login(
+      validatedData.email,
+      validatedData.password,
+      userAgent,
+      ipAddress
+    ***REMOVED***;
+
+    res.json({
+      success: true,
+      message: "Connexion réussie",
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        createdAt: result.user.createdAt,
+      },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }***REMOVED***;
+  }
+
+  /**
+   * Déconnexion d'un utilisateur
+   * POST /api/auth/logout
+   */
+  static async logout(req, res***REMOVED*** {
+    const authHeader = req.headers["authorization"];
+    const accessToken = authHeader?.split(" "***REMOVED***[1];
+    const { refreshToken } = req.body || {};
+    const userId = req.user?.userId || req.user?.id;
+
+    if (!userId***REMOVED*** {
+      return res.status(401***REMOVED***.json({
+        success: false,
+        message: "Non authentifié",
+      }***REMOVED***;
+    }
+
+    await AuthService.logout(accessToken, refreshToken, userId***REMOVED***;
+
+    res.json({
+      success: true,
+      message: "Déconnexion réussie",
+    }***REMOVED***;
+  }
+
+  /**
+   * Rafraîchir les tokens
+   * POST /api/auth/refresh
+   */
+  static async refresh(req, res***REMOVED*** {
+    const validatedData = validateData(refreshTokenSchema, req.body***REMOVED***;
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.refresh(
+      validatedData.refreshToken,
+      userAgent,
+      ipAddress
+    ***REMOVED***;
+
+    res.json({
+      success: true,
+      message: "Tokens rafraîchis avec succès",
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }***REMOVED***;
+  }
+}
+
+-------------------------------
+import { UserService } from "#services/user.service";
+import { UserDto } from "#dto/user.dto";
+import { signToken } from "#lib/jwt";
+import { validateData } from "#lib/validate";
+import { registerSchema, loginSchema } from "#schemas/user.schema";
+
+export class UserController {
+  static async register(req, res***REMOVED*** {
+    const validatedData = validateData(registerSchema, req.body***REMOVED***;
+    const user = await UserService.register(validatedData***REMOVED***;
+    const token = await signToken({ userId: user.id }***REMOVED***;
+
+    res.status(201***REMOVED***.json({
+      success: true,
+      user: UserDto.transform(user***REMOVED***,
+      token,
+    }***REMOVED***;
+  }
+
+  static async login(req, res***REMOVED*** {
+    const validatedData = validateData(loginSchema, req.body***REMOVED***;
+    const { email, password } = validatedData;
+
+    const user = await UserService.login(email, password***REMOVED***;
+    const token = await signToken({ userId: user.id }***REMOVED***;
+
+    res.json({
+      success: true,
+      user: UserDto.transform(user***REMOVED***,
+      token,
+    }***REMOVED***;
+  }
+
+  static async getAll(req, res***REMOVED*** {
+    const users = await UserService.findAll(***REMOVED***;
+    res.json({
+      success: true,
+      users: UserDto.transform(users***REMOVED***,
+    }***REMOVED***;
+  }
+
+  static async getById(req, res***REMOVED*** {
+    const user = await UserService.findById(parseInt(req.params.id***REMOVED******REMOVED***;
+    res.json({
+      success: true,
+      user: UserDto.transform(user***REMOVED***,
+    }***REMOVED***;
+  }
+}
+-------------------------------
+import { signAccessToken, signRefreshToken } from "#lib/jwt";
+import { findOrCreateOAuthUser } from "#services/oauth.service";
+import { logger } from "#lib/logger";
+import prisma from "#lib/prisma";
+
+/**
+ * Initie la redirection vers Google OAuth
+ * Passport gère automatiquement la redirection
+ */
+export const initiateGoogleOAuth = (req, res***REMOVED*** => {
+  logger.info("Google OAuth initiation request"***REMOVED***;
+  // Passport middleware gère la redirection
+};
+
+/**
+ * Callback Google OAuth - Traite la réponse de Google et crée/lie l'utilisateur
+ * @param {Object} req - Requête Express avec user depuis Passport
+ * @param {Object} res - Réponse Express
+ */
+export const handleGoogleCallback = async (req, res***REMOVED*** => {
+  try {
+    logger.info("Google OAuth callback received"***REMOVED***;
+
+    // Passport a déjà authentifié et mis en place req.user
+    if (!req.user***REMOVED*** {
+      logger.warn("No user in callback request"***REMOVED***;
+      return res.status(401***REMOVED***.json({
+        success: false,
+        message: "Authentification échouée",
+      }***REMOVED***;
+    }
+
+    // Trouver ou créer l'utilisateur OAuth
+    const user = await findOrCreateOAuthUser({
+      provider: "google",
+      id: req.user.id,
+      profile: req.user.profile,
+    }***REMOVED***;
+
+    if (!user***REMOVED*** {
+      logger.error("Failed to create/find OAuth user"***REMOVED***;
+      return res.status(500***REMOVED***.json({
+        success: false,
+        message: "Erreur lors de la création du compte",
+      }***REMOVED***;
+    }
+
+    // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { oauthAccounts: true },
+    }***REMOVED***;
+
+    // Générer les tokens JWT
+    const accessToken = await signAccessToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    }***REMOVED***;
+
+    const refreshToken = await signRefreshToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    }***REMOVED***;
+
+    // Sauvegarder le refresh token en BD (optionnel, mais recommandé***REMOVED***
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: updatedUser.id,
+        userAgent: req.headers["user-agent"],
+        ipAddress: req.ip,
+        expiresAt: new Date(Date.now(***REMOVED*** + 7 * 24 * 60 * 60 * 1000***REMOVED***, // 7 jours
+      },
+    }***REMOVED***;
+
+    logger.info(`Google OAuth user authenticated: ${updatedUser.id}`***REMOVED***;
+
+    // Retourner les tokens
+    return res.json({
+      success: true,
+      message: "Authentification Google réussie",
+      data: {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          oauthProviders: updatedUser.oauthAccounts.map((acc***REMOVED*** => acc.provider***REMOVED***,
+        },
+        accessToken,
+        refreshToken,
+      },
+    }***REMOVED***;
+  } catch (error***REMOVED*** {
+    logger.error(`Google OAuth callback error: ${error.message}`***REMOVED***;
+    return res.status(500***REMOVED***.json({
+      success: false,
+      message: "Erreur serveur lors de l'authentification",
+      error: error.message,
+    }***REMOVED***;
+  }
+};
+
+/**
+ * Initie la redirection vers GitHub OAuth
+ * Passport gère automatiquement la redirection
+ */
+export const initiateGitHubOAuth = (req, res***REMOVED*** => {
+  logger.info("GitHub OAuth initiation request"***REMOVED***;
+  // Passport middleware gère la redirection
+};
+
+/**
+ * Callback GitHub OAuth - Traite la réponse de GitHub et crée/lie l'utilisateur
+ * @param {Object} req - Requête Express avec user depuis Passport
+ * @param {Object} res - Réponse Express
+ */
+export const handleGitHubCallback = async (req, res***REMOVED*** => {
+  try {
+    logger.info("GitHub OAuth callback received"***REMOVED***;
+
+    // Passport a déjà authentifié et mis en place req.user
+    if (!req.user***REMOVED*** {
+      logger.warn("No user in callback request"***REMOVED***;
+      return res.status(401***REMOVED***.json({
+        success: false,
+        message: "Authentification échouée",
+      }***REMOVED***;
+    }
+
+    // Trouver ou créer l'utilisateur OAuth
+    const user = await findOrCreateOAuthUser({
+      provider: "github",
+      id: req.user.id,
+      profile: req.user.profile,
+    }***REMOVED***;
+
+    if (!user***REMOVED*** {
+      logger.error("Failed to create/find OAuth user"***REMOVED***;
+      return res.status(500***REMOVED***.json({
+        success: false,
+        message: "Erreur lors de la création du compte",
+      }***REMOVED***;
+    }
+
+    // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { oauthAccounts: true },
+    }***REMOVED***;
+
+    // Générer les tokens JWT
+    const accessToken = await signAccessToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    }***REMOVED***;
+
+    const refreshToken = await signRefreshToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    }***REMOVED***;
+
+    // Sauvegarder le refresh token en BD (optionnel, mais recommandé***REMOVED***
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: updatedUser.id,
+        userAgent: req.headers["user-agent"],
+        ipAddress: req.ip,
+        expiresAt: new Date(Date.now(***REMOVED*** + 7 * 24 * 60 * 60 * 1000***REMOVED***, // 7 jours
+      },
+    }***REMOVED***;
+
+    logger.info(`GitHub OAuth user authenticated: ${updatedUser.id}`***REMOVED***;
+
+    // Retourner les tokens
+    return res.json({
+      success: true,
+      message: "Authentification GitHub réussie",
+      data: {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          oauthProviders: updatedUser.oauthAccounts.map((acc***REMOVED*** => acc.provider***REMOVED***,
+        },
+        accessToken,
+        refreshToken,
+      },
+    }***REMOVED***;
+  } catch (error***REMOVED*** {
+    logger.error(`GitHub OAuth callback error: ${error.message}`***REMOVED***;
+    return res.status(500***REMOVED***.json({
+      success: false,
+      message: "Erreur serveur lors de l'authentification",
+      error: error.message,
+    }***REMOVED***;
+  }
+};
+-------------------------------
+import { z } from "zod";
+
+export const registerSchema = z.object({
+  email: z.email("Email invalide"***REMOVED***,
+  password: z.string(***REMOVED***.min(8, "Minimum 8 caractères"***REMOVED***,
+  name: z.string(***REMOVED***.min(2***REMOVED***.optional(***REMOVED***,
+}***REMOVED***;
+
+export const loginSchema = z.object({
+  email: z.email("Email invalide"***REMOVED***,
+  password: z.string(***REMOVED***.min(1, "Mot de passe requis"***REMOVED***,
+}***REMOVED***;
+
+-------------------------------
+import { z } from "zod";
+
+/**
+ * Schéma de validation pour l'inscription
+ */
+export const registerSchema = z.object({
+  email: z.string(***REMOVED***.email("Email invalide"***REMOVED***,
+  password: z.string(***REMOVED***.min(8, "Le mot de passe doit contenir au moins 8 caractères"***REMOVED***,
+  firstName: z.string(***REMOVED***.min(1, "Le prénom est requis"***REMOVED***,
+  lastName: z.string(***REMOVED***.min(1, "Le nom est requis"***REMOVED***,
+}***REMOVED***;
+
+/**
+ * Schéma de validation pour la connexion
+ */
+export const loginSchema = z.object({
+  email: z.string(***REMOVED***.email("Email invalide"***REMOVED***,
+  password: z.string(***REMOVED***.min(1, "Le mot de passe est requis"***REMOVED***,
+}***REMOVED***;
+
+/**
+ * Schéma de validation pour le rafraîchissement de token
+ */
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string(***REMOVED***.min(1, "Le refresh token est requis"***REMOVED***,
+}***REMOVED***;
+
+-------------------------------
+import { ValidationException } from "#lib/exceptions";
+
+/**
+ * Cette fonction vérifie que les données reçues respectent les règles prévues.
+ * Si ce n'est pas le cas, elle lève une erreur (Exception***REMOVED*** que le serveur catchera.
+ */
+export function validateData(schema, data***REMOVED*** {
+  const result = schema.safeParse(data***REMOVED***;
+
+  if (!result.success***REMOVED*** {
+    throw new ValidationException(result.error.flatten(***REMOVED***.fieldErrors***REMOVED***;
+  }
+
+  return result.data;
+}
+-------------------------------
+import { SignJWT, jwtVerify } from "jose";
+import { config } from "#config/env";
+
+const secret = new TextEncoder(***REMOVED***.encode(config.JWT_SECRET***REMOVED***
+const alg = "HS256";
+
+/**
+ * Génère un access token JWT
+ * @param {Object} payload - Données à encoder dans le token
+ * @returns {Promise<string>} Access token
+ */
+export async function signAccessToken(payload***REMOVED*** {
+  const expiresIn = config.JWT_ACCESS_EXPIRY || "15m";
+  return new SignJWT(payload***REMOVED***
+    .setProtectedHeader({ alg }***REMOVED***
+    .setIssuedAt(***REMOVED***
+    .setExpirationTime(expiresIn***REMOVED***
+    .sign(secret***REMOVED***;
+}
+
+/**
+ * Génère un refresh token JWT
+ * @param {Object} payload - Données à encoder dans le token
+ * @returns {Promise<string>} Refresh token
+ */
+export async function signRefreshToken(payload***REMOVED*** {
+  const expiresIn = config.JWT_REFRESH_EXPIRY || "7d";
+  return new SignJWT(payload***REMOVED***
+    .setProtectedHeader({ alg }***REMOVED***
+    .setIssuedAt(***REMOVED***
+    .setExpirationTime(expiresIn***REMOVED***
+    .sign(secret***REMOVED***;
+}
+
+/**
+ * Vérifie et décode un token JWT
+ * @param {string} token - Token à vérifier
+ * @returns {Promise<Object>} Payload décodé
+ * @throws {Error} Si le token est invalide ou expiré
+ */
+export async function verifyToken(token***REMOVED*** {
+  try {
+    const { payload } = await jwtVerify(token, secret***REMOVED***;
+    return payload;
+  } catch (error***REMOVED*** {
+    throw new Error("Token invalide ou expiré"***REMOVED***;
+  }
+}
+
+/**
+ * Fonction legacy pour rétrocompatibilité
+ * @deprecated Utiliser signAccessToken ou signRefreshToken
+ */
+export async function signToken(payload, expiresIn = "7d"***REMOVED*** {
+  return new SignJWT(payload***REMOVED***
+    .setProtectedHeader({ alg }***REMOVED***
+    .setIssuedAt(***REMOVED***
+    .setExpirationTime(expiresIn***REMOVED***
+    .sign(secret***REMOVED***;
+}-------------------------------
+import argon2 from "argon2";
+
+export async function hashPassword(password***REMOVED*** {
+  return argon2.hash(password***REMOVED***;
+}
+
+export async function verifyPassword(hash, password***REMOVED*** {
+  return argon2.verify(hash, password***REMOVED***;
+}-------------------------------
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
+
+const prisma = new PrismaClient(***REMOVED***;
+
+export default prisma;-------------------------------
+export function asyncHandler(fn***REMOVED*** {
+  return (req, res, next***REMOVED*** => {
+    Promise.resolve(fn(req, res, next***REMOVED******REMOVED***.catch(next***REMOVED***;
+  };
+}
+
+-------------------------------
+export class HttpException extends Error {
+  constructor(statusCode, message, details = null***REMOVED*** {
+    super(message***REMOVED***;
+    this.statusCode = statusCode;
+    this.details = details;
+    this.name = this.constructor.name;
+  }
+}
+
+export class BadRequestException extends HttpException {
+  constructor(message = "Bad Request", details = null***REMOVED*** {
+    super(400, message, details***REMOVED***;
+  }
+}
+
+export class UnauthorizedException extends HttpException {
+  constructor(message = "Unauthorized"***REMOVED*** {
+    super(401, message***REMOVED***;
+  }
+}
+
+export class ForbiddenException extends HttpException {
+  constructor(message = "Forbidden"***REMOVED*** {
+    super(403, message***REMOVED***;
+  }
+}
+
+export class NotFoundException extends HttpException {
+  constructor(message = "Not Found"***REMOVED*** {
+    super(404, message***REMOVED***;
+  }
+}
+
+export class ConflictException extends HttpException {
+  constructor(message = "Conflict"***REMOVED*** {
+    super(409, message***REMOVED***;
+  }
+}
+
+export class ValidationException extends HttpException {
+  constructor(errors***REMOVED*** {
+    super(400, "Validation Failed", errors***REMOVED***;
+  }
+}
+
+-------------------------------
+import passport from "passport";
+import GoogleStrategy from "passport-google-oauth20";
+import GitHubStrategy from "passport-github2";
+import { config } from "#config/env";
+import { logger } from "#lib/logger";
+
+const GoogleOAuth2Strategy = GoogleStrategy.Strategy;
+const GitHubOAuth2Strategy = GitHubStrategy.Strategy;
+
+/**
+ * Initialise les stratégies OAuth (Google et GitHub***REMOVED*** avec Passport
+ * Gère la sérialisation/désérialisation des utilisateurs
+ */
+export function initializePassportStrategies(***REMOVED*** {
+  // Sérialisation: stocker l'ID utilisateur en session
+  passport.serializeUser((user, done***REMOVED*** => {
+    done(null, user.id***REMOVED***;
+  }***REMOVED***;
+
+  // Désérialisation: récupérer l'utilisateur par son ID (optionnel, utilisé si sessions***REMOVED***
+  passport.deserializeUser((id, done***REMOVED*** => {
+    done(null, { id }***REMOVED***;
+  }***REMOVED***;
+
+  // Stratégie Google OAuth2
+  passport.use(
+    new GoogleOAuth2Strategy(
+      {
+        clientID: config.GOOGLE_CLIENT_ID,
+        clientSecret: config.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${config.APP_URL}/api/oauth/google/callback`,
+        passReqToCallback: true,
+      },
+      (req, accessToken, refreshToken, profile, done***REMOVED*** => {
+        logger.info(`Google OAuth callback received for profile: ${profile.id}`***REMOVED***;
+        
+        // On retourne le profil OAuth pour traitement dans le contrôleur
+        return done(null, {
+          id: profile.id,
+          provider: "google",
+          profile: profile,
+          accessToken,
+          refreshToken,
+        }***REMOVED***;
+      }
+    ***REMOVED***
+  ***REMOVED***;
+
+  // Stratégie GitHub OAuth2
+  passport.use(
+    new GitHubOAuth2Strategy(
+      {
+        clientID: config.GITHUB_CLIENT_ID,
+        clientSecret: config.GITHUB_CLIENT_SECRET,
+        callbackURL: `${config.APP_URL}/api/oauth/github/callback`,
+        passReqToCallback: true,
+        scope : ["user.email"]
+      },
+      (req, accessToken, refreshToken, profile, done***REMOVED*** => {
+        logger.info(`GitHub OAuth callback received for profile: ${profile.id}`***REMOVED***;
+        
+        // On retourne le profil OAuth pour traitement dans le contrôleur
+        return done(null, {
+          id: profile.id,
+          provider: "github",
+          profile: profile,
+          accessToken,
+          refreshToken,
+        }***REMOVED***;
+      }
+    ***REMOVED***
+  ***REMOVED***;
+
+  logger.info("Passport strategies initialized (Google + GitHub***REMOVED***"***REMOVED***;
+}
+
+/**
+ * Exporte l'instance Passport configurée pour utilisation dans les routes et middlewares
+ */
+export default passport;
+-------------------------------
+import pino from "pino";
+import pinoHttp from "pino-http";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+export const logger = pino({
+  level: isProduction ? "info" : "debug",
+  transport: isProduction
+    ? undefined
+    : {
+        target: "pino-pretty",
+        options: { colorize: true },
+      },
+}***REMOVED***;
+
+export const httpLogger = pinoHttp({ logger }***REMOVED***;
+
+-------------------------------
+import prisma from "#lib/prisma";
+import { logger } from "#lib/logger";
+
+/**
+ * Gère ou crée un compte OAuth et retourne l'utilisateur associé
+ * @param {Object} oauthData - Données du profil OAuth retournées par le provider
+ * @param {string} oauthData.provider - "google" ou "github"
+ * @param {string} oauthData.id - ID du profil OAuth
+ * @param {Object} oauthData.profile - Profil complet du provider
+ * @returns {Promise<Object>} Utilisateur avec ses données
+ * @throws {Error} Si erreur lors de la création/liaison du compte
+ */
+export async function findOrCreateOAuthUser(oauthData***REMOVED*** {
+  const { provider, id: providerId, profile } = oauthData;
+
+  try {
+    // Vérifier si le compte OAuth existe déjà
+    let oauthAccount = await prisma.oAuthAccount.findFirst({
+      where: {
+        provider,
+        providerId: String(providerId***REMOVED***,
+      },
+      include: {
+        user: true,
+      },
+    }***REMOVED***;
+
+    // Si le compte OAuth existe, retourner l'utilisateur associé
+    if (oauthAccount***REMOVED*** {
+      logger.info(`OAuth account found for ${provider}:${providerId}`***REMOVED***;
+      return oauthAccount.user;
+    }
+
+    // Sinon, créer un nouvel utilisateur et lier le compte OAuth
+    logger.info(`Creating new user for OAuth ${provider}:${providerId}`***REMOVED***;
+
+    // Extraire les données du profil selon le provider
+    let userData = {};
+    if (provider === "google"***REMOVED*** {
+      userData = {
+        email: profile.emails?.[0]?.value || `${providerId}@google.oauth`,
+        firstName: profile.name?.givenName || "Google",
+        lastName: profile.name?.familyName || "User",
+      };
+    } else if (provider === "github"***REMOVED*** {
+      userData = {
+        email: profile.emails?.[0]?.value || `${providerId}@github.oauth`,
+        firstName: profile.displayName?.split(" "***REMOVED***[0] || "GitHub",
+        lastName: profile.displayName?.split(" "***REMOVED***[1] || "User",
+      };
+    }
+
+    // Vérifier si un utilisateur existe déjà avec cet email
+    let user = await prisma.user.findUnique({
+      where: { email: userData.email },
+    }***REMOVED***;
+
+    // Si l'utilisateur existe déjà, créer le compte OAuth pour le lier
+    if (user***REMOVED*** {
+      logger.info(`User already exists with email ${userData.email}, linking OAuth account`***REMOVED***;
+      oauthAccount = await prisma.oAuthAccount.create({
+        data: {
+          provider,
+          providerId: String(providerId***REMOVED***,
+          userId: user.id,
+        },
+        include: {
+          user: true,
+        },
+      }***REMOVED***;
+      return oauthAccount.user;
+    }
+
+    // Sinon, créer un nouvel utilisateur ET le compte OAuth associé
+    user = await prisma.user.create({
+      data: {
+        ...userData,
+        oauthAccounts: {
+          create: {
+            provider,
+            providerId: String(providerId***REMOVED***,
+          },
+        },
+      },
+      include: {
+        oauthAccounts: true,
+      },
+    }***REMOVED***;
+
+    logger.info(`New user created with OAuth ${provider}:${providerId}`***REMOVED***;
+    return user;
+  } catch (error***REMOVED*** {
+    logger.error(`Error in findOrCreateOAuthUser: ${error.message}`***REMOVED***;
+    throw error;
+  }
+}
+
+/**
+ * Lie un compte OAuth à un utilisateur existant (si pas déjà lié***REMOVED***
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} provider - "google" ou "github"
+ * @param {string} providerId - ID du profil OAuth
+ * @returns {Promise<Object>} L'enregistrement OAuthAccount créé ou existant
+ */
+export async function linkOAuthAccount(userId, provider, providerId***REMOVED*** {
+  try {
+    // Vérifier si le compte OAuth est déjà lié
+    let oauthAccount = await prisma.oAuthAccount.findFirst({
+      where: {
+        provider,
+        providerId: String(providerId***REMOVED***,
+      },
+    }***REMOVED***;
+
+    if (oauthAccount***REMOVED*** {
+      logger.warn(
+        `OAuth account ${provider}:${providerId} already linked to another user`
+      ***REMOVED***;
+      throw new Error("Ce compte OAuth est déjà lié à un autre utilisateur"***REMOVED***;
+    }
+
+    // Créer le lien
+    oauthAccount = await prisma.oAuthAccount.create({
+      data: {
+        provider,
+        providerId: String(providerId***REMOVED***,
+        userId,
+      },
+    }***REMOVED***;
+
+    logger.info(`OAuth account linked: ${provider}:${providerId} -> user ${userId}`***REMOVED***;
+    return oauthAccount;
+  } catch (error***REMOVED*** {
+    logger.error(`Error in linkOAuthAccount: ${error.message}`***REMOVED***;
+    throw error;
+  }
+}
+
+/**
+ * Retourne tous les comptes OAuth liés à un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Array>} Liste des comptes OAuth
+ */
+export async function getUserOAuthAccounts(userId***REMOVED*** {
+  try {
+    return await prisma.oAuthAccount.findMany({
+      where: { userId },
+    }***REMOVED***;
+  } catch (error***REMOVED*** {
+    logger.error(`Error in getUserOAuthAccounts: ${error.message}`***REMOVED***;
+    throw error;
+  }
+}
+
+/**
+ * Supprime un compte OAuth lié à un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} provider - "google" ou "github"
+ * @returns {Promise<Object>} L'enregistrement supprimé
+ */
+export async function unlinkOAuthAccount(userId, provider***REMOVED*** {
+  try {
+    const deleted = await prisma.oAuthAccount.deleteMany({
+      where: {
+        userId,
+        provider,
+      },
+    }***REMOVED***;
+
+    logger.info(`OAuth account unlinked: ${provider} from user ${userId}`***REMOVED***;
+    return deleted;
+  } catch (error***REMOVED*** {
+    logger.error(`Error in unlinkOAuthAccount: ${error.message}`***REMOVED***;
+    throw error;
+  }
+}
+-------------------------------
+import prisma from "#lib/prisma";
+import { hashPassword, verifyPassword } from "#lib/password";
+import { signAccessToken, signRefreshToken, verifyToken } from "#lib/jwt";
+import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
+import { config } from "#config/env";
+
+/**
+ * Calcule la date d'expiration à partir d'une chaîne comme "7d" ou "15m"
+ * @param {string} expiryString - Chaîne d'expiration (ex: "7d", "15m", "1h"***REMOVED***
+ * @returns {Date} Date d'expiration
+ */
+function calculateExpirationDate(expiryString***REMOVED*** {
+  const date = new Date(***REMOVED***;
+  const match = expiryString.match(/^(\d+***REMOVED***([dhms]***REMOVED***$/***REMOVED***;
+  
+  if (!match***REMOVED*** {
+    // Par défaut, 7 jours si le format est invalide
+    date.setDate(date.getDate(***REMOVED*** + 7***REMOVED***;
+    return date;
+  }
+
+  const value = parseInt(match[1]***REMOVED***;
+  const unit = match[2];
+
+  switch (unit***REMOVED*** {
+    case 'd':
+      date.setDate(date.getDate(***REMOVED*** + value***REMOVED***;
+      break;
+    case 'h':
+      date.setHours(date.getHours(***REMOVED*** + value***REMOVED***;
+      break;
+    case 'm':
+      date.setMinutes(date.getMinutes(***REMOVED*** + value***REMOVED***;
+      break;
+    case 's':
+      date.setSeconds(date.getSeconds(***REMOVED*** + value***REMOVED***;
+      break;
+    default:
+      date.setDate(date.getDate(***REMOVED*** + 7***REMOVED***;
+  }
+
+  return date;
+}
+
+export class AuthService {
+  /**
+   * Inscription d'un nouvel utilisateur
+   * @param {Object} data - Données d'inscription (email, password, firstName, lastName***REMOVED***
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Utilisateur créé avec tokens
+   */
+  static async register(data, userAgent, ipAddress***REMOVED*** {
+    const { email, password, firstName, lastName } = data;
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+    if (existingUser***REMOVED*** {
+      throw new ConflictException("Cet email est déjà utilisé"***REMOVED***;
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await hashPassword(password***REMOVED***;
+
+    // Créer l'utilisateur
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+      },
+    }***REMOVED***;
+
+    // Générer les tokens
+    const accessToken = await signAccessToken({ userId: user.id }***REMOVED***;
+    const refreshTokenValue = await signRefreshToken({ userId: user.id }***REMOVED***;
+
+    // Calculer la date d'expiration du refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry***REMOVED***;
+
+    // Sauvegarder le refresh token en base
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    }***REMOVED***;
+
+    // Retourner les données sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken: refreshTokenValue,
+    };
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   * @param {string} email - Email de l'utilisateur
+   * @param {string} password - Mot de passe
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Utilisateur avec tokens
+   */
+  static async login(email, password, userAgent, ipAddress***REMOVED*** {
+    // Trouver l'utilisateur
+    const user = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+    if (!user || !user.password***REMOVED*** {
+      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    }
+
+    // Vérifier le mot de passe
+    const isPasswordValid = await verifyPassword(user.password, password***REMOVED***;
+    if (!isPasswordValid***REMOVED*** {
+      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    }
+
+    // Vérifier si le compte est désactivé
+    if (user.disabledAt***REMOVED*** {
+      throw new UnauthorizedException("Ce compte a été désactivé"***REMOVED***;
+    }
+
+    // Générer les tokens
+    const accessToken = await signAccessToken({ userId: user.id }***REMOVED***;
+    const refreshTokenValue = await signRefreshToken({ userId: user.id }***REMOVED***;
+
+    // Calculer la date d'expiration du refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry***REMOVED***;
+
+    // Sauvegarder le refresh token en base
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    }***REMOVED***;
+
+    // Retourner les données sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken: refreshTokenValue,
+    };
+  }
+
+  /**
+   * Déconnexion d'un utilisateur
+   * @param {string} accessToken - Access token à blacklister
+   * @param {string} refreshToken - Refresh token à révoquer
+   * @param {string} userId - ID de l'utilisateur
+   * @returns {Promise<void>}
+   */
+  static async logout(accessToken, refreshToken, userId***REMOVED*** {
+    try {
+      // Vérifier et décoder l'access token pour obtenir l'expiration
+      const decoded = await verifyToken(accessToken***REMOVED***;
+      const expiresAt = new Date(decoded.exp * 1000***REMOVED***;
+
+      // Blacklister l'access token
+      await prisma.blacklistedAccessToken.create({
+        data: {
+          token: accessToken,
+          userId,
+          expiresAt,
+        },
+      }***REMOVED***;
+    } catch (error***REMOVED*** {
+      // Si le token est déjà expiré, on peut ignorer l'erreur
+    }
+
+    // Révoquer le refresh token
+    if (refreshToken***REMOVED*** {
+      await prisma.refreshToken.updateMany({
+        where: {
+          token: refreshToken,
+          userId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(***REMOVED***,
+        },
+      }***REMOVED***;
+    }
+  }
+
+  /**
+   * Rafraîchir les tokens
+   * @param {string} refreshToken - Refresh token à vérifier
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Nouveaux tokens
+   */
+  static async refresh(refreshToken, userAgent, ipAddress***REMOVED*** {
+    // Vérifier le refresh token dans la base de données
+    const tokenRecord = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true },
+    }***REMOVED***;
+
+    if (!tokenRecord***REMOVED*** {
+      throw new UnauthorizedException("Refresh token invalide"***REMOVED***;
+    }
+
+    // Vérifier si le token est révoqué
+    if (tokenRecord.revokedAt***REMOVED*** {
+      throw new UnauthorizedException("Refresh token révoqué"***REMOVED***;
+    }
+
+    // Vérifier si le token est expiré
+    if (new Date(***REMOVED*** > tokenRecord.expiresAt***REMOVED*** {
+      throw new UnauthorizedException("Refresh token expiré"***REMOVED***;
+    }
+
+    // Vérifier le token JWT
+    let decoded;
+    try {
+      decoded = await verifyToken(refreshToken***REMOVED***;
+    } catch (error***REMOVED*** {
+      throw new UnauthorizedException("Refresh token invalide"***REMOVED***;
+    }
+
+    // Vérifier si l'utilisateur existe toujours et n'est pas désactivé
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    }***REMOVED***;
+
+    if (!user || user.disabledAt***REMOVED*** {
+      throw new UnauthorizedException("Utilisateur invalide"***REMOVED***;
+    }
+
+    // Générer de nouveaux tokens
+    const newAccessToken = await signAccessToken({ userId: user.id }***REMOVED***;
+    const newRefreshTokenValue = await signRefreshToken({ userId: user.id }***REMOVED***;
+
+    // Révoquer l'ancien refresh token
+    await prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revokedAt: new Date(***REMOVED*** },
+    }***REMOVED***;
+
+    // Calculer la date d'expiration du nouveau refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry***REMOVED***;
+
+    // Sauvegarder le nouveau refresh token
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    }***REMOVED***;
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshTokenValue,
+    };
+  }
+}
+
+-------------------------------
+import prisma from "#lib/prisma";
+import { hashPassword, verifyPassword } from "#lib/password";
+import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
+
+export class UserService {
+  static async register(data***REMOVED*** {
+    const { email, password, name } = data;
+
+    const existingUser = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+    if (existingUser***REMOVED*** {
+      throw new ConflictException("Email déjà utilisé"***REMOVED***;
+    }
+
+    const hashedPassword = await hashPassword(password***REMOVED***;
+
+    return prisma.user.create({
+      data: { email, password: hashedPassword, name },
+    }***REMOVED***;
+  }
+
+  static async login(email, password***REMOVED*** {
+    const user = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+
+    if (!user || !(await verifyPassword(user.password, password***REMOVED******REMOVED******REMOVED*** {
+      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    }
+
+    return user;
+  }
+
+  static async findAll(***REMOVED*** {
+    return prisma.user.findMany(***REMOVED***;
+  }
+
+  static async findById(id***REMOVED*** {
+    const user = await prisma.user.findUnique({ where: { id } }***REMOVED***;
+
+    if (!user***REMOVED*** {
+      throw new NotFoundException("Utilisateur non trouvé"***REMOVED***;
+    }
+
+    return user;
+  }
+}
+-------------------------------
