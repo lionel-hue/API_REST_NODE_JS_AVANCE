@@ -1,0 +1,1545 @@
+src:
+config
+controllers
+dto
+index.js
+lib
+middlewares
+routes
+schemas
+services
+
+src/config:
+env.js
+
+src/controllers:
+auth.controller.js
+oauth.controller.js
+user.controller.js
+
+src/dto:
+user.dto.js
+
+src/lib:
+async-handler.js
+exceptions.js
+jwt.js
+logger.js
+oauth.js
+password.js
+prisma.js
+validate.js
+
+src/middlewares:
+auth.js
+error-handler.js
+not-found.js
+
+src/routes:
+auth.routes.js
+oauth.routes.js
+user.routes.js
+
+src/schemas:
+auth.schema.js
+user.schema.js
+
+src/services:
+auth.service.js
+oauth.service.js
+user.service.js
+export class UserDto {
+  constructor(user) {
+    this.id = user.id;
+    this.email = user.email;
+    this.name = user.name;
+    this.createdAt = user.createdAt;
+  }
+
+  // Cette méthode permet de transformer soit un utilisateur, soit une liste d'utilisateurs
+  static transform(data) {
+    if (Array.isArray(data)) {
+      return data.map((user) => new UserDto(user));
+    }
+    return new UserDto(data);
+  }
+}
+-------------------------------
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+export const config = {
+  PORT: process.env.PORT || 3000,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  DATABASE_URL: process.env.DATABASE_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m',
+  JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d',
+  
+  // OAuth
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  APP_URL: process.env.APP_URL || 'http://localhost:3000',
+};-------------------------------
+import { Router } from "express";
+import { AuthController } from "#controllers/auth.controller";
+import { asyncHandler } from "#lib/async-handler";
+import { auth } from "#middlewares/auth";
+
+const router = Router();
+
+// Routes publiques
+router.post("/register", asyncHandler(AuthController.register));
+router.post("/login", asyncHandler(AuthController.login));
+router.post("/refresh", asyncHandler(AuthController.refresh));
+
+// Routes protégées (nécessitent authentification)
+router.post("/logout", auth, asyncHandler(AuthController.logout));
+
+export default router;
+-------------------------------
+import express from "express";
+import passport from "#lib/oauth";
+import {
+  initiateGoogleOAuth,
+  handleGoogleCallback,
+  initiateGitHubOAuth,
+  handleGitHubCallback,
+} from "#controllers/oauth.controller";
+
+const router = express.Router();
+
+/**
+ * GET /api/oauth/google
+ * Redirige l'utilisateur vers la page de connexion Google
+ * Passport gère automatiquement la redirection avec les paramètres OAuth
+ */
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false  // ← ADD THIS LINE
+  }),
+  initiateGoogleOAuth
+);
+
+/**
+ * GET /api/oauth/google/callback
+ * Callback de Google - Passport valide le code d'autorisation et remplit req.user
+ * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+ */
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login?error=google_auth_failed",
+    session: false  // ← ADD THIS LINE
+  }),
+  handleGoogleCallback
+);
+
+/**
+ * GET /api/oauth/github
+ * Redirige l'utilisateur vers la page de connexion GitHub
+ * Passport gère automatiquement la redirection avec les paramètres OAuth
+ */
+router.get(
+  "/github",
+  passport.authenticate("github", {
+    scope: ["user:email"],
+    session: false  // ← ADD THIS LINE
+  }),
+  initiateGitHubOAuth
+);
+
+/**
+ * GET /api/oauth/github/callback
+ * Callback de GitHub - Passport valide le code d'autorisation et remplit req.user
+ * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+ */
+router.get(
+  "/github/callback",
+  passport.authenticate("github", {
+    failureRedirect: "/login?error=github_auth_failed",
+    session: false  // ← ADD THIS LINE
+  }),
+  handleGitHubCallback
+);
+
+export default router;-------------------------------
+import { Router } from "express";
+import { UserController } from "#controllers/user.controller";
+import { asyncHandler } from "#lib/async-handler";
+import { auth } from "#middlewares/auth";
+
+const router = Router();
+
+// Consultation de la liste ou d'un utilisateur
+router.get("/", asyncHandler(UserController.getAll));
+router.get("/:id", auth, asyncHandler(UserController.getById));
+
+export default router;
+-------------------------------
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+import { logger, httpLogger } from "#lib/logger";
+import { errorHandler } from "#middlewares/error-handler";
+import { notFoundHandler } from "#middlewares/not-found";
+import { auth } from "#middlewares/auth";
+import userRouter from "#routes/user.routes";
+import authRouter from "#routes/auth.routes";
+import oauthRouter from "#routes/oauth.routes";
+import { config } from "#config/env";
+import passport, { initializePassportStrategies } from "#lib/oauth";
+
+const app = express();
+const PORT = config.PORT || 3000;
+
+// Initialiser les stratégies Passport OAuth
+initializePassportStrategies();
+
+// Middlewares
+app.use(helmet());
+app.use(cors());
+app.use(httpLogger);
+app.use(express.json());
+// Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer)
+app.set('trust proxy', true);
+
+// Initialiser Passport
+app.use(passport.initialize());
+
+// Routes
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "API Express opérationnelle" });
+});
+
+// Utilisation des routes
+app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
+app.use("/api/oauth", oauthRouter);
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
+
+app.listen(PORT, () => {
+  logger.info(`Serveur démarré sur http://localhost:${PORT}`);
+});
+-------------------------------
+import { UnauthorizedException } from "#lib/exceptions";
+import { verifyToken } from "#lib/jwt";
+import { logger } from "#lib/logger";
+import prisma from "#lib/prisma";
+
+/**
+ * Middleware d'authentification complet
+ * Vérifie le token JWT, la blacklist, et ajoute l'utilisateur à la requête
+ * 
+ * Fonctionnalités :
+ * - Extraction et validation du token Bearer
+ * - Vérification de la blacklist des tokens révoqués
+ * - Vérification de la validité du token JWT
+ * - Vérification de l'existence et du statut de l'utilisateur
+ * - Ajout des informations utilisateur à req.user
+ */
+export async function auth(req, res, next) {
+  try {
+    // Extraire le token du header Authorization
+    const bearerToken = req.headers["authorization"];
+    if (!bearerToken) {
+      logger.warn("Tentative d'accès sans token d'authentification");
+      throw new UnauthorizedException("Token d'authentification manquant");
+    }
+
+    const tokenPart = bearerToken.split(" ");
+    if (tokenPart[0] !== "Bearer" || !tokenPart[1]) {
+      logger.warn("Format de token invalide");
+      throw new UnauthorizedException("Format de token invalide. Utilisez: Bearer <token>");
+    }
+
+    const token = tokenPart[1];
+
+    // Vérifier si le token est blacklisté (révoqué)
+    const blacklistedToken = await prisma.blacklistedAccessToken.findUnique({
+      where: { token },
+    });
+
+    if (blacklistedToken) {
+      logger.warn(`Tentative d'utilisation d'un token révoqué pour l'utilisateur ${blacklistedToken.userId}`);
+      throw new UnauthorizedException("Token révoqué");
+    }
+
+    // Vérifier et décoder le token JWT
+    let payload;
+    try {
+      payload = await verifyToken(token);
+    } catch (error) {
+      logger.warn("Token JWT invalide ou expiré");
+      throw new UnauthorizedException("Token invalide ou expiré");
+    }
+
+    if (!payload.userId) {
+      logger.warn("Token sans userId");
+      throw new UnauthorizedException("Token invalide");
+    }
+
+    // Vérifier que l'utilisateur existe et n'est pas désactivé
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        disabledAt: true,
+      },
+    });
+
+    if (!user) {
+      logger.warn(`Utilisateur ${payload.userId} non trouvé`);
+      throw new UnauthorizedException("Utilisateur non trouvé");
+    }
+
+    if (user.disabledAt) {
+      logger.warn(`Tentative d'accès avec un compte désactivé: ${user.email}`);
+      throw new UnauthorizedException("Compte désactivé");
+    }
+
+    // Ajouter les informations de l'utilisateur à la requête
+    req.user = {
+      userId: user.id,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+
+    logger.debug(`Authentification réussie pour l'utilisateur: ${user.email}`);
+    next();
+  } catch (error) {
+    // Si c'est déjà une UnauthorizedException, la propager telle quelle
+    if (error instanceof UnauthorizedException) {
+      throw error;
+    }
+    // Pour toute autre erreur, la transformer en UnauthorizedException
+    logger.error("Erreur dans le middleware d'authentification:", error);
+    throw new UnauthorizedException("Token invalide ou expiré");
+  }
+}
+-------------------------------
+import { NotFoundException } from "#lib/exceptions";
+
+export function notFoundHandler(req, res, next) {
+  throw new NotFoundException(`Route ${req.method} ${req.path} not found`);
+}
+
+-------------------------------
+import { HttpException } from "#lib/exceptions";
+import { logger } from "#lib/logger";
+
+export function errorHandler(err, req, res, next) {
+  if (err instanceof HttpException) {
+    logger.warn({ err, path: req.path }, err.message);
+  } else {
+    logger.error({ err, path: req.path }, "Unhandled error");
+  }
+
+  if (err instanceof HttpException) {
+    return res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+      ...(err.details && { details: err.details }),
+    });
+  }
+
+  if (err.code === "P2002") {
+    return res.status(409).json({
+      success: false,
+      error: "Resource already exists",
+    });
+  }
+
+  if (err.code === "P2025") {
+    return res.status(404).json({
+      success: false,
+      error: "Resource not found",
+    });
+  }
+
+  if (err instanceof SyntaxError && err.status === 400) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid JSON",
+    });
+  }
+
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.status(500).json({
+    success: false,
+    error: isProduction ? "Internal Server Error" : err.message,
+    ...(!isProduction && { stack: err.stack }),
+  });
+}
+
+-------------------------------
+import { AuthService } from "#services/auth.service";
+import { validateData } from "#lib/validate";
+import { registerSchema, loginSchema, refreshTokenSchema } from "#schemas/auth.schema";
+
+export class AuthController {
+  /**
+   * Inscription d'un nouvel utilisateur
+   * POST /api/auth/register
+   */
+  static async register(req, res) {
+    const validatedData = validateData(registerSchema, req.body);
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.register(
+      validatedData,
+      userAgent,
+      ipAddress
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Inscription réussie",
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        createdAt: result.user.createdAt,
+      },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   * POST /api/auth/login
+   */
+  static async login(req, res) {
+    const validatedData = validateData(loginSchema, req.body);
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.login(
+      validatedData.email,
+      validatedData.password,
+      userAgent,
+      ipAddress
+    );
+
+    res.json({
+      success: true,
+      message: "Connexion réussie",
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        createdAt: result.user.createdAt,
+      },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  }
+
+  /**
+   * Déconnexion d'un utilisateur
+   * POST /api/auth/logout
+   */
+  static async logout(req, res) {
+    const authHeader = req.headers["authorization"];
+    const accessToken = authHeader?.split(" ")[1];
+    const { refreshToken } = req.body || {};
+    const userId = req.user?.userId || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Non authentifié",
+      });
+    }
+
+    await AuthService.logout(accessToken, refreshToken, userId);
+
+    res.json({
+      success: true,
+      message: "Déconnexion réussie",
+    });
+  }
+
+  /**
+   * Rafraîchir les tokens
+   * POST /api/auth/refresh
+   */
+  static async refresh(req, res) {
+    const validatedData = validateData(refreshTokenSchema, req.body);
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+    const result = await AuthService.refresh(
+      validatedData.refreshToken,
+      userAgent,
+      ipAddress
+    );
+
+    res.json({
+      success: true,
+      message: "Tokens rafraîchis avec succès",
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  }
+}
+
+-------------------------------
+import { UserService } from "#services/user.service";
+import { UserDto } from "#dto/user.dto";
+import { signToken } from "#lib/jwt";
+import { validateData } from "#lib/validate";
+import { registerSchema, loginSchema } from "#schemas/user.schema";
+
+export class UserController {
+  static async register(req, res) {
+    const validatedData = validateData(registerSchema, req.body);
+    const user = await UserService.register(validatedData);
+    const token = await signToken({ userId: user.id });
+
+    res.status(201).json({
+      success: true,
+      user: UserDto.transform(user),
+      token,
+    });
+  }
+
+  static async login(req, res) {
+    const validatedData = validateData(loginSchema, req.body);
+    const { email, password } = validatedData;
+
+    const user = await UserService.login(email, password);
+    const token = await signToken({ userId: user.id });
+
+    res.json({
+      success: true,
+      user: UserDto.transform(user),
+      token,
+    });
+  }
+
+  static async getAll(req, res) {
+    const users = await UserService.findAll();
+    res.json({
+      success: true,
+      users: UserDto.transform(users),
+    });
+  }
+
+  static async getById(req, res) {
+    const user = await UserService.findById(parseInt(req.params.id));
+    res.json({
+      success: true,
+      user: UserDto.transform(user),
+    });
+  }
+}
+-------------------------------
+import { signAccessToken, signRefreshToken } from "#lib/jwt";
+import { findOrCreateOAuthUser } from "#services/oauth.service";
+import { logger } from "#lib/logger";
+import prisma from "#lib/prisma";
+
+/**
+ * Initie la redirection vers Google OAuth
+ * Passport gère automatiquement la redirection
+ */
+export const initiateGoogleOAuth = (req, res) => {
+  logger.info("Google OAuth initiation request");
+  // Passport middleware gère la redirection
+};
+
+/**
+ * Callback Google OAuth - Traite la réponse de Google et crée/lie l'utilisateur
+ * @param {Object} req - Requête Express avec user depuis Passport
+ * @param {Object} res - Réponse Express
+ */
+export const handleGoogleCallback = async (req, res) => {
+  try {
+    logger.info("Google OAuth callback received");
+
+    // Passport a déjà authentifié et mis en place req.user
+    if (!req.user) {
+      logger.warn("No user in callback request");
+      return res.status(401).json({
+        success: false,
+        message: "Authentification échouée",
+      });
+    }
+
+    // Trouver ou créer l'utilisateur OAuth
+    const user = await findOrCreateOAuthUser({
+      provider: "google",
+      id: req.user.id,
+      profile: req.user.profile,
+    });
+
+    if (!user) {
+      logger.error("Failed to create/find OAuth user");
+      return res.status(500).json({
+        success: false,
+        message: "Erreur lors de la création du compte",
+      });
+    }
+
+    // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { oauthAccounts: true },
+    });
+
+    // Générer les tokens JWT
+    const accessToken = await signAccessToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    });
+
+    const refreshToken = await signRefreshToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    });
+
+    // Sauvegarder le refresh token en BD (optionnel, mais recommandé)
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: updatedUser.id,
+        userAgent: req.headers["user-agent"],
+        ipAddress: req.ip,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
+      },
+    });
+
+    logger.info(`Google OAuth user authenticated: ${updatedUser.id}`);
+
+    // Retourner les tokens
+    return res.json({
+      success: true,
+      message: "Authentification Google réussie",
+      data: {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          oauthProviders: updatedUser.oauthAccounts.map((acc) => acc.provider),
+        },
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    logger.error(`Google OAuth callback error: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur lors de l'authentification",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Initie la redirection vers GitHub OAuth
+ * Passport gère automatiquement la redirection
+ */
+export const initiateGitHubOAuth = (req, res) => {
+  logger.info("GitHub OAuth initiation request");
+  // Passport middleware gère la redirection
+};
+
+/**
+ * Callback GitHub OAuth - Traite la réponse de GitHub et crée/lie l'utilisateur
+ * @param {Object} req - Requête Express avec user depuis Passport
+ * @param {Object} res - Réponse Express
+ */
+export const handleGitHubCallback = async (req, res) => {
+  try {
+    logger.info("GitHub OAuth callback received");
+
+    // Passport a déjà authentifié et mis en place req.user
+    if (!req.user) {
+      logger.warn("No user in callback request");
+      return res.status(401).json({
+        success: false,
+        message: "Authentification échouée",
+      });
+    }
+
+    // Trouver ou créer l'utilisateur OAuth
+    const user = await findOrCreateOAuthUser({
+      provider: "github",
+      id: req.user.id,
+      profile: req.user.profile,
+    });
+
+    if (!user) {
+      logger.error("Failed to create/find OAuth user");
+      return res.status(500).json({
+        success: false,
+        message: "Erreur lors de la création du compte",
+      });
+    }
+
+    // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { oauthAccounts: true },
+    });
+
+    // Générer les tokens JWT
+    const accessToken = await signAccessToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    });
+
+    const refreshToken = await signRefreshToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+    });
+
+    // Sauvegarder le refresh token en BD (optionnel, mais recommandé)
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: updatedUser.id,
+        userAgent: req.headers["user-agent"],
+        ipAddress: req.ip,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
+      },
+    });
+
+    logger.info(`GitHub OAuth user authenticated: ${updatedUser.id}`);
+
+    // Retourner les tokens
+    return res.json({
+      success: true,
+      message: "Authentification GitHub réussie",
+      data: {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          oauthProviders: updatedUser.oauthAccounts.map((acc) => acc.provider),
+        },
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    logger.error(`GitHub OAuth callback error: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur lors de l'authentification",
+      error: error.message,
+    });
+  }
+};
+-------------------------------
+import { z } from "zod";
+
+export const registerSchema = z.object({
+  email: z.email("Email invalide"),
+  password: z.string().min(8, "Minimum 8 caractères"),
+  name: z.string().min(2).optional(),
+});
+
+export const loginSchema = z.object({
+  email: z.email("Email invalide"),
+  password: z.string().min(1, "Mot de passe requis"),
+});
+
+-------------------------------
+import { z } from "zod";
+
+/**
+ * Schéma de validation pour l'inscription
+ */
+export const registerSchema = z.object({
+  email: z.string().email("Email invalide"),
+  password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
+  firstName: z.string().min(1, "Le prénom est requis"),
+  lastName: z.string().min(1, "Le nom est requis"),
+});
+
+/**
+ * Schéma de validation pour la connexion
+ */
+export const loginSchema = z.object({
+  email: z.string().email("Email invalide"),
+  password: z.string().min(1, "Le mot de passe est requis"),
+});
+
+/**
+ * Schéma de validation pour le rafraîchissement de token
+ */
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Le refresh token est requis"),
+});
+
+-------------------------------
+import { ValidationException } from "#lib/exceptions";
+
+/**
+ * Cette fonction vérifie que les données reçues respectent les règles prévues.
+ * Si ce n'est pas le cas, elle lève une erreur (Exception) que le serveur catchera.
+ */
+export function validateData(schema, data) {
+  const result = schema.safeParse(data);
+
+  if (!result.success) {
+    throw new ValidationException(result.error.flatten().fieldErrors);
+  }
+
+  return result.data;
+}
+-------------------------------
+import { SignJWT, jwtVerify } from "jose";
+import { config } from "#config/env";
+
+const secret = new TextEncoder().encode(config.JWT_SECRET)
+const alg = "HS256";
+
+/**
+ * Génère un access token JWT
+ * @param {Object} payload - Données à encoder dans le token
+ * @returns {Promise<string>} Access token
+ */
+export async function signAccessToken(payload) {
+  const expiresIn = config.JWT_ACCESS_EXPIRY || "15m";
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(secret);
+}
+
+/**
+ * Génère un refresh token JWT
+ * @param {Object} payload - Données à encoder dans le token
+ * @returns {Promise<string>} Refresh token
+ */
+export async function signRefreshToken(payload) {
+  const expiresIn = config.JWT_REFRESH_EXPIRY || "7d";
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(secret);
+}
+
+/**
+ * Vérifie et décode un token JWT
+ * @param {string} token - Token à vérifier
+ * @returns {Promise<Object>} Payload décodé
+ * @throws {Error} Si le token est invalide ou expiré
+ */
+export async function verifyToken(token) {
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch (error) {
+    throw new Error("Token invalide ou expiré");
+  }
+}
+
+/**
+ * Fonction legacy pour rétrocompatibilité
+ * @deprecated Utiliser signAccessToken ou signRefreshToken
+ */
+export async function signToken(payload, expiresIn = "7d") {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(secret);
+}-------------------------------
+import argon2 from "argon2";
+
+export async function hashPassword(password) {
+  return argon2.hash(password);
+}
+
+export async function verifyPassword(hash, password) {
+  return argon2.verify(hash, password);
+}-------------------------------
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
+
+const prisma = new PrismaClient();
+
+export default prisma;-------------------------------
+export function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+-------------------------------
+export class HttpException extends Error {
+  constructor(statusCode, message, details = null) {
+    super(message);
+    this.statusCode = statusCode;
+    this.details = details;
+    this.name = this.constructor.name;
+  }
+}
+
+export class BadRequestException extends HttpException {
+  constructor(message = "Bad Request", details = null) {
+    super(400, message, details);
+  }
+}
+
+export class UnauthorizedException extends HttpException {
+  constructor(message = "Unauthorized") {
+    super(401, message);
+  }
+}
+
+export class ForbiddenException extends HttpException {
+  constructor(message = "Forbidden") {
+    super(403, message);
+  }
+}
+
+export class NotFoundException extends HttpException {
+  constructor(message = "Not Found") {
+    super(404, message);
+  }
+}
+
+export class ConflictException extends HttpException {
+  constructor(message = "Conflict") {
+    super(409, message);
+  }
+}
+
+export class ValidationException extends HttpException {
+  constructor(errors) {
+    super(400, "Validation Failed", errors);
+  }
+}
+
+-------------------------------
+import passport from "passport";
+import GoogleStrategy from "passport-google-oauth20";
+import GitHubStrategy from "passport-github2";
+import { config } from "#config/env";
+import { logger } from "#lib/logger";
+
+const GoogleOAuth2Strategy = GoogleStrategy.Strategy;
+const GitHubOAuth2Strategy = GitHubStrategy.Strategy;
+
+/**
+ * Initialise les stratégies OAuth (Google et GitHub) avec Passport
+ * Gère la sérialisation/désérialisation des utilisateurs
+ */
+export function initializePassportStrategies() {
+  // Sérialisation: stocker l'ID utilisateur en session
+  passport.serializeUser((user, done) => {
+    done(null, user.id);
+  });
+
+  // Désérialisation: récupérer l'utilisateur par son ID (optionnel, utilisé si sessions)
+  passport.deserializeUser((id, done) => {
+    done(null, { id });
+  });
+
+  // Stratégie Google OAuth2
+  passport.use(
+    new GoogleOAuth2Strategy(
+      {
+        clientID: config.GOOGLE_CLIENT_ID,
+        clientSecret: config.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${config.APP_URL}/api/oauth/google/callback`,
+        passReqToCallback: true,
+      },
+      (req, accessToken, refreshToken, profile, done) => {
+        logger.info(`Google OAuth callback received for profile: ${profile.id}`);
+        
+        // On retourne le profil OAuth pour traitement dans le contrôleur
+        return done(null, {
+          id: profile.id,
+          provider: "google",
+          profile: profile,
+          accessToken,
+          refreshToken,
+        });
+      }
+    )
+  );
+
+  // Stratégie GitHub OAuth2
+  passport.use(
+    new GitHubOAuth2Strategy(
+      {
+        clientID: config.GITHUB_CLIENT_ID,
+        clientSecret: config.GITHUB_CLIENT_SECRET,
+        callbackURL: `${config.APP_URL}/api/oauth/github/callback`,
+        passReqToCallback: true,
+        scope : ["user.email"]
+      },
+      (req, accessToken, refreshToken, profile, done) => {
+        logger.info(`GitHub OAuth callback received for profile: ${profile.id}`);
+        
+        // On retourne le profil OAuth pour traitement dans le contrôleur
+        return done(null, {
+          id: profile.id,
+          provider: "github",
+          profile: profile,
+          accessToken,
+          refreshToken,
+        });
+      }
+    )
+  );
+
+  logger.info("Passport strategies initialized (Google + GitHub)");
+}
+
+/**
+ * Exporte l'instance Passport configurée pour utilisation dans les routes et middlewares
+ */
+export default passport;
+-------------------------------
+import pino from "pino";
+import pinoHttp from "pino-http";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+export const logger = pino({
+  level: isProduction ? "info" : "debug",
+  transport: isProduction
+    ? undefined
+    : {
+        target: "pino-pretty",
+        options: { colorize: true },
+      },
+});
+
+export const httpLogger = pinoHttp({ logger });
+
+-------------------------------
+import prisma from "#lib/prisma";
+import { logger } from "#lib/logger";
+
+/**
+ * Gère ou crée un compte OAuth et retourne l'utilisateur associé
+ * @param {Object} oauthData - Données du profil OAuth retournées par le provider
+ * @param {string} oauthData.provider - "google" ou "github"
+ * @param {string} oauthData.id - ID du profil OAuth
+ * @param {Object} oauthData.profile - Profil complet du provider
+ * @returns {Promise<Object>} Utilisateur avec ses données
+ * @throws {Error} Si erreur lors de la création/liaison du compte
+ */
+export async function findOrCreateOAuthUser(oauthData) {
+  const { provider, id: providerId, profile } = oauthData;
+
+  try {
+    // Vérifier si le compte OAuth existe déjà
+    let oauthAccount = await prisma.oAuthAccount.findFirst({
+      where: {
+        provider,
+        providerId: String(providerId),
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    // Si le compte OAuth existe, retourner l'utilisateur associé
+    if (oauthAccount) {
+      logger.info(`OAuth account found for ${provider}:${providerId}`);
+      return oauthAccount.user;
+    }
+
+    // Sinon, créer un nouvel utilisateur et lier le compte OAuth
+    logger.info(`Creating new user for OAuth ${provider}:${providerId}`);
+
+    // Extraire les données du profil selon le provider
+    let userData = {};
+    if (provider === "google") {
+      userData = {
+        email: profile.emails?.[0]?.value || `${providerId}@google.oauth`,
+        firstName: profile.name?.givenName || "Google",
+        lastName: profile.name?.familyName || "User",
+      };
+    } else if (provider === "github") {
+      userData = {
+        email: profile.emails?.[0]?.value || `${providerId}@github.oauth`,
+        firstName: profile.displayName?.split(" ")[0] || "GitHub",
+        lastName: profile.displayName?.split(" ")[1] || "User",
+      };
+    }
+
+    // Vérifier si un utilisateur existe déjà avec cet email
+    let user = await prisma.user.findUnique({
+      where: { email: userData.email },
+    });
+
+    // Si l'utilisateur existe déjà, créer le compte OAuth pour le lier
+    if (user) {
+      logger.info(`User already exists with email ${userData.email}, linking OAuth account`);
+      oauthAccount = await prisma.oAuthAccount.create({
+        data: {
+          provider,
+          providerId: String(providerId),
+          userId: user.id,
+        },
+        include: {
+          user: true,
+        },
+      });
+      return oauthAccount.user;
+    }
+
+    // Sinon, créer un nouvel utilisateur ET le compte OAuth associé
+    user = await prisma.user.create({
+      data: {
+        ...userData,
+        oauthAccounts: {
+          create: {
+            provider,
+            providerId: String(providerId),
+          },
+        },
+      },
+      include: {
+        oauthAccounts: true,
+      },
+    });
+
+    logger.info(`New user created with OAuth ${provider}:${providerId}`);
+    return user;
+  } catch (error) {
+    logger.error(`Error in findOrCreateOAuthUser: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Lie un compte OAuth à un utilisateur existant (si pas déjà lié)
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} provider - "google" ou "github"
+ * @param {string} providerId - ID du profil OAuth
+ * @returns {Promise<Object>} L'enregistrement OAuthAccount créé ou existant
+ */
+export async function linkOAuthAccount(userId, provider, providerId) {
+  try {
+    // Vérifier si le compte OAuth est déjà lié
+    let oauthAccount = await prisma.oAuthAccount.findFirst({
+      where: {
+        provider,
+        providerId: String(providerId),
+      },
+    });
+
+    if (oauthAccount) {
+      logger.warn(
+        `OAuth account ${provider}:${providerId} already linked to another user`
+      );
+      throw new Error("Ce compte OAuth est déjà lié à un autre utilisateur");
+    }
+
+    // Créer le lien
+    oauthAccount = await prisma.oAuthAccount.create({
+      data: {
+        provider,
+        providerId: String(providerId),
+        userId,
+      },
+    });
+
+    logger.info(`OAuth account linked: ${provider}:${providerId} -> user ${userId}`);
+    return oauthAccount;
+  } catch (error) {
+    logger.error(`Error in linkOAuthAccount: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Retourne tous les comptes OAuth liés à un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Array>} Liste des comptes OAuth
+ */
+export async function getUserOAuthAccounts(userId) {
+  try {
+    return await prisma.oAuthAccount.findMany({
+      where: { userId },
+    });
+  } catch (error) {
+    logger.error(`Error in getUserOAuthAccounts: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Supprime un compte OAuth lié à un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} provider - "google" ou "github"
+ * @returns {Promise<Object>} L'enregistrement supprimé
+ */
+export async function unlinkOAuthAccount(userId, provider) {
+  try {
+    const deleted = await prisma.oAuthAccount.deleteMany({
+      where: {
+        userId,
+        provider,
+      },
+    });
+
+    logger.info(`OAuth account unlinked: ${provider} from user ${userId}`);
+    return deleted;
+  } catch (error) {
+    logger.error(`Error in unlinkOAuthAccount: ${error.message}`);
+    throw error;
+  }
+}
+-------------------------------
+import prisma from "#lib/prisma";
+import { hashPassword, verifyPassword } from "#lib/password";
+import { signAccessToken, signRefreshToken, verifyToken } from "#lib/jwt";
+import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
+import { config } from "#config/env";
+
+/**
+ * Calcule la date d'expiration à partir d'une chaîne comme "7d" ou "15m"
+ * @param {string} expiryString - Chaîne d'expiration (ex: "7d", "15m", "1h")
+ * @returns {Date} Date d'expiration
+ */
+function calculateExpirationDate(expiryString) {
+  const date = new Date();
+  const match = expiryString.match(/^(\d+)([dhms])$/);
+  
+  if (!match) {
+    // Par défaut, 7 jours si le format est invalide
+    date.setDate(date.getDate() + 7);
+    return date;
+  }
+
+  const value = parseInt(match[1]);
+  const unit = match[2];
+
+  switch (unit) {
+    case 'd':
+      date.setDate(date.getDate() + value);
+      break;
+    case 'h':
+      date.setHours(date.getHours() + value);
+      break;
+    case 'm':
+      date.setMinutes(date.getMinutes() + value);
+      break;
+    case 's':
+      date.setSeconds(date.getSeconds() + value);
+      break;
+    default:
+      date.setDate(date.getDate() + 7);
+  }
+
+  return date;
+}
+
+export class AuthService {
+  /**
+   * Inscription d'un nouvel utilisateur
+   * @param {Object} data - Données d'inscription (email, password, firstName, lastName)
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Utilisateur créé avec tokens
+   */
+  static async register(data, userAgent, ipAddress) {
+    const { email, password, firstName, lastName } = data;
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException("Cet email est déjà utilisé");
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await hashPassword(password);
+
+    // Créer l'utilisateur
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+      },
+    });
+
+    // Générer les tokens
+    const accessToken = await signAccessToken({ userId: user.id });
+    const refreshTokenValue = await signRefreshToken({ userId: user.id });
+
+    // Calculer la date d'expiration du refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry);
+
+    // Sauvegarder le refresh token en base
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    });
+
+    // Retourner les données sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken: refreshTokenValue,
+    };
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   * @param {string} email - Email de l'utilisateur
+   * @param {string} password - Mot de passe
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Utilisateur avec tokens
+   */
+  static async login(email, password, userAgent, ipAddress) {
+    // Trouver l'utilisateur
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.password) {
+      throw new UnauthorizedException("Identifiants invalides");
+    }
+
+    // Vérifier le mot de passe
+    const isPasswordValid = await verifyPassword(user.password, password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException("Identifiants invalides");
+    }
+
+    // Vérifier si le compte est désactivé
+    if (user.disabledAt) {
+      throw new UnauthorizedException("Ce compte a été désactivé");
+    }
+
+    // Générer les tokens
+    const accessToken = await signAccessToken({ userId: user.id });
+    const refreshTokenValue = await signRefreshToken({ userId: user.id });
+
+    // Calculer la date d'expiration du refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry);
+
+    // Sauvegarder le refresh token en base
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    });
+
+    // Retourner les données sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken: refreshTokenValue,
+    };
+  }
+
+  /**
+   * Déconnexion d'un utilisateur
+   * @param {string} accessToken - Access token à blacklister
+   * @param {string} refreshToken - Refresh token à révoquer
+   * @param {string} userId - ID de l'utilisateur
+   * @returns {Promise<void>}
+   */
+  static async logout(accessToken, refreshToken, userId) {
+    try {
+      // Vérifier et décoder l'access token pour obtenir l'expiration
+      const decoded = await verifyToken(accessToken);
+      const expiresAt = new Date(decoded.exp * 1000);
+
+      // Blacklister l'access token
+      await prisma.blacklistedAccessToken.create({
+        data: {
+          token: accessToken,
+          userId,
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      // Si le token est déjà expiré, on peut ignorer l'erreur
+    }
+
+    // Révoquer le refresh token
+    if (refreshToken) {
+      await prisma.refreshToken.updateMany({
+        where: {
+          token: refreshToken,
+          userId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  /**
+   * Rafraîchir les tokens
+   * @param {string} refreshToken - Refresh token à vérifier
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Nouveaux tokens
+   */
+  static async refresh(refreshToken, userAgent, ipAddress) {
+    // Vérifier le refresh token dans la base de données
+    const tokenRecord = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true },
+    });
+
+    if (!tokenRecord) {
+      throw new UnauthorizedException("Refresh token invalide");
+    }
+
+    // Vérifier si le token est révoqué
+    if (tokenRecord.revokedAt) {
+      throw new UnauthorizedException("Refresh token révoqué");
+    }
+
+    // Vérifier si le token est expiré
+    if (new Date() > tokenRecord.expiresAt) {
+      throw new UnauthorizedException("Refresh token expiré");
+    }
+
+    // Vérifier le token JWT
+    let decoded;
+    try {
+      decoded = await verifyToken(refreshToken);
+    } catch (error) {
+      throw new UnauthorizedException("Refresh token invalide");
+    }
+
+    // Vérifier si l'utilisateur existe toujours et n'est pas désactivé
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!user || user.disabledAt) {
+      throw new UnauthorizedException("Utilisateur invalide");
+    }
+
+    // Générer de nouveaux tokens
+    const newAccessToken = await signAccessToken({ userId: user.id });
+    const newRefreshTokenValue = await signRefreshToken({ userId: user.id });
+
+    // Révoquer l'ancien refresh token
+    await prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revokedAt: new Date() },
+    });
+
+    // Calculer la date d'expiration du nouveau refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry);
+
+    // Sauvegarder le nouveau refresh token
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    });
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshTokenValue,
+    };
+  }
+}
+
+-------------------------------
+import prisma from "#lib/prisma";
+import { hashPassword, verifyPassword } from "#lib/password";
+import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
+
+export class UserService {
+  static async register(data) {
+    const { email, password, name } = data;
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException("Email déjà utilisé");
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    return prisma.user.create({
+      data: { email, password: hashedPassword, name },
+    });
+  }
+
+  static async login(email, password) {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || !(await verifyPassword(user.password, password))) {
+      throw new UnauthorizedException("Identifiants invalides");
+    }
+
+    return user;
+  }
+
+  static async findAll() {
+    return prisma.user.findMany();
+  }
+
+  static async findById(id) {
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException("Utilisateur non trouvé");
+    }
+
+    return user;
+  }
+}
+-------------------------------

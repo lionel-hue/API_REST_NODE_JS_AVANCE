@@ -1,0 +1,334 @@
+import nodemailer from 'nodemailer';
+import { config } from '#config/env';
+import { logger } from '#lib/logger';
+
+class EmailService {
+  constructor() {
+    this.transporter = null;
+    this.init();
+  }
+
+  init() {
+    if (!config.EMAIL_ENABLED) {
+      logger.warn('Email service is disabled. Set EMAIL_ENABLED=true to enable.');
+      return;
+    }
+
+    if (!config.EMAIL_SMTP_HOST || !config.EMAIL_USERNAME || !config.EMAIL_PASSWORD) {
+      logger.warn('Email configuration is incomplete. Email service will use test mode.');
+      this.setupTestAccount();
+      return;
+    }
+
+    this.transporter = nodemailer.createTransport({
+      host: config.EMAIL_SMTP_HOST,
+      port: parseInt(config.EMAIL_SMTP_PORT),
+      secure: config.EMAIL_SMTP_PORT === '465', // true for 465, false for other ports
+      auth: {
+        user: config.EMAIL_USERNAME,
+        pass: config.EMAIL_PASSWORD,
+      },
+    });
+
+    logger.info('Email service initialized with SMTP transport');
+  }
+
+  async setupTestAccount() {
+    try {
+      // Create a test account if no SMTP config provided
+      const testAccount = await nodemailer.createTestAccount();
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      
+      logger.info(`Email service using test account: ${testAccount.user}`);
+      logger.info('View sent emails at: https://ethereal.email');
+    } catch (error) {
+      logger.error('Failed to create email test account:', error);
+      this.transporter = null;
+    }
+  }
+
+  /**
+   * Send verification email
+   * @param {string} to - Recipient email
+   * @param {string} token - Verification token
+   * @param {string} firstName - User's first name
+   * @returns {Promise<boolean>} Success status
+   */
+  async sendVerificationEmail(to, token, firstName = 'User') {
+    if (!this.transporter) {
+      logger.warn('Email service not initialized. Skipping email sending.');
+      return false;
+    }
+
+    const verificationUrl = `${config.APP_URL}/api/auth/verify-email?token=${token}`;
+
+    const mailOptions = {
+      from: `"Auth API" <${config.EMAIL_FROM}>`,
+      to,
+      subject: 'Verify Your Email Address',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }
+            .content { padding: 30px; background: #f9f9f9; }
+            .button { 
+              display: inline-block; 
+              padding: 12px 24px; 
+              background: #4F46E5; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px; 
+              margin: 20px 0; 
+            }
+            .footer { 
+              margin-top: 30px; 
+              padding-top: 20px; 
+              border-top: 1px solid #eee; 
+              color: #666; 
+              font-size: 12px; 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to Auth API!</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${firstName},</h2>
+              <p>Thank you for registering. Please verify your email address by clicking the button below:</p>
+              
+              <center>
+                <a href="${verificationUrl}" class="button">Verify Email Address</a>
+              </center>
+              
+              <p>Or copy and paste this link in your browser:</p>
+              <p><code>${verificationUrl}</code></p>
+              
+              <p>This link will expire in 24 hours.</p>
+              
+              <p>If you didn't create an account, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
+              <p>This is an automated message, please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Hi ${firstName},\n\nPlease verify your email address by clicking this link: ${verificationUrl}\n\nThis link will expire in 24 hours.\n\nIf you didn't create an account, you can safely ignore this email.`,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (config.NODE_ENV === 'development') {
+        logger.info(`Verification email sent: ${nodemailer.getTestMessageUrl(info) || info.messageId}`);
+      } else {
+        logger.info(`Verification email sent to ${to}: ${info.messageId}`);
+      }
+      
+      return true;
+    } catch (error) {
+      logger.error('Failed to send verification email:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send password reset email
+   * @param {string} to - Recipient email
+   * @param {string} token - Password reset token
+   * @param {string} firstName - User's first name
+   * @returns {Promise<boolean>} Success status
+   */
+  async sendPasswordResetEmail(to, token, firstName = 'User') {
+    if (!this.transporter) {
+      logger.warn('Email service not initialized. Skipping email sending.');
+      return false;
+    }
+
+    const resetUrl = `${config.APP_URL}/api/password/reset?token=${token}`;
+
+    const mailOptions = {
+      from: `"Auth API" <${config.EMAIL_FROM}>`,
+      to,
+      subject: 'Reset Your Password',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #DC2626; color: white; padding: 20px; text-align: center; }
+            .content { padding: 30px; background: #f9f9f9; }
+            .button { 
+              display: inline-block; 
+              padding: 12px 24px; 
+              background: #DC2626; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px; 
+              margin: 20px 0; 
+            }
+            .footer { 
+              margin-top: 30px; 
+              padding-top: 20px; 
+              border-top: 1px solid #eee; 
+              color: #666; 
+              font-size: 12px; 
+            }
+            .warning { 
+              background: #FEF3C7; 
+              border-left: 4px solid #F59E0B; 
+              padding: 15px; 
+              margin: 15px 0; 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Reset Request</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${firstName},</h2>
+              <p>We received a request to reset your password. Click the button below to create a new password:</p>
+              
+              <center>
+                <a href="${resetUrl}" class="button">Reset Password</a>
+              </center>
+              
+              <div class="warning">
+                <p><strong>Important:</strong> This link will expire in 1 hour for security reasons.</p>
+              </div>
+              
+              <p>Or copy and paste this link in your browser:</p>
+              <p><code>${resetUrl}</code></p>
+              
+              <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
+              <p>This is an automated message, please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Hi ${firstName},\n\nWe received a request to reset your password. Click this link to create a new password: ${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request a password reset, you can safely ignore this email.`,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      if (config.NODE_ENV === 'development') {
+        logger.info(`Password reset email sent: ${nodemailer.getTestMessageUrl(info) || info.messageId}`);
+      } else {
+        logger.info(`Password reset email sent to ${to}: ${info.messageId}`);
+      }
+      
+      return true;
+    } catch (error) {
+      logger.error('Failed to send password reset email:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send password changed confirmation email
+   * @param {string} to - Recipient email
+   * @param {string} firstName - User's first name
+   * @returns {Promise<boolean>} Success status
+   */
+  async sendPasswordChangedEmail(to, firstName = 'User') {
+    if (!this.transporter) {
+      logger.warn('Email service not initialized. Skipping email sending.');
+      return false;
+    }
+
+    const mailOptions = {
+      from: `"Auth API" <${config.EMAIL_FROM}>`,
+      to,
+      subject: 'Your Password Has Been Changed',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #10B981; color: white; padding: 20px; text-align: center; }
+            .content { padding: 30px; background: #f9f9f9; }
+            .alert { 
+              background: #F3F4F6; 
+              border: 1px solid #D1D5DB; 
+              padding: 15px; 
+              border-radius: 5px; 
+              margin: 15px 0; 
+            }
+            .footer { 
+              margin-top: 30px; 
+              padding-top: 20px; 
+              border-top: 1px solid #eee; 
+              color: #666; 
+              font-size: 12px; 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Updated Successfully</h1>
+            </div>
+            <div class="content">
+              <h2>Hi ${firstName},</h2>
+              <p>This is a confirmation that your password has been successfully changed.</p>
+              
+              <div class="alert">
+                <p><strong>Security Notice:</strong></p>
+                <p>If you did not make this change, please contact our support team immediately.</p>
+                <p>We recommend reviewing your account activity and ensuring your account security settings are up to date.</p>
+              </div>
+              
+              <p>For your security, this change affects all devices where you are logged in.</p>
+              
+              <p>Thank you for helping us keep your account secure.</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
+              <p>This is an automated message, please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Hi ${firstName},\n\nThis is a confirmation that your password has been successfully changed.\n\nIf you did not make this change, please contact our support team immediately.\n\nFor your security, this change affects all devices where you are logged in.\n\nThank you for helping us keep your account secure.`,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      logger.info(`Password change confirmation sent to ${to}: ${info.messageId}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to send password change confirmation:', error);
+      return false;
+    }
+  }
+}
+
+export default new EmailService();
