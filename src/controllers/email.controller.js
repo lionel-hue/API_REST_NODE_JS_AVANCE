@@ -1,5 +1,5 @@
 import { validateData } from '#lib/validate';
-import verificationService from '#services/verification.service.js';
+import verificationService from '#services/verification.service';
 import { BadRequestException } from '#lib/exceptions';
 import { logger } from '#lib/logger';
 
