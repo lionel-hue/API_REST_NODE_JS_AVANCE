@@ -3,7 +3,7 @@ import { hashPassword, verifyPassword } from "#lib/password";
 import { signAccessToken, signRefreshToken, verifyToken } from "#lib/jwt";
 import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
 import { config } from "#config/env";
-import verificationService from './verification.service.js'; // Add this import
+import verificationService from './verification.service.js';
 
 /**
  * Calcule la date d'expiration à partir d'une chaîne comme "7d" ou "15m"
@@ -13,7 +13,7 @@ import verificationService from './verification.service.js'; // Add this import
 function calculateExpirationDate(expiryString***REMOVED*** {
   const date = new Date(***REMOVED***;
   const match = expiryString.match(/^(\d+***REMOVED***([dhms]***REMOVED***$/***REMOVED***;
-
+  
   if (!match***REMOVED*** {
     // Par défaut, 7 jours si le format est invalide
     date.setDate(date.getDate(***REMOVED*** + 7***REMOVED***;
@@ -54,29 +54,112 @@ export class AuthService {
   static async register(data, userAgent, ipAddress***REMOVED*** {
     const { email, password, firstName, lastName } = data;
 
+    console.log(`\n🔵 [AUTH SERVICE] Starting registration for: ${email}`***REMOVED***;
+
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await prisma.user.findUnique({ where: { email } }***REMOVED***;
     if (existingUser***REMOVED*** {
+      console.log(`❌ [AUTH SERVICE] Email already exists: ${email}`***REMOVED***;
       throw new ConflictException("Cet email est déjà utilisé"***REMOVED***;
     }
 
     // Hasher le mot de passe
     const hashedPassword = await hashPassword(password***REMOVED***;
 
-    // Créer l'utilisateur
+    console.log(`🔵 [AUTH SERVICE] Creating user in database...`***REMOVED***;
+
+    // Créer l'utilisateur - IMPORTANT: NOT auto-verified!
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         firstName,
         lastName,
-        emailVerifiedAt: null,
+        emailVerifiedAt: null, // CRITICAL: Do NOT auto-verify in development
       },
     }***REMOVED***;
 
-    // Send verification email (except in development***REMOVED***
-    if (config.EMAIL_ENABLED***REMOVED*** {
-      await verificationService.createAndSendVerification(user***REMOVED***;
+    console.log(`✅ [AUTH SERVICE] User created: ${user.id}`***REMOVED***;
+    console.log(`✅ [AUTH SERVICE] User emailVerifiedAt: ${user.emailVerifiedAt}`***REMOVED***;
+
+    // Créer et envoyer le token de vérification
+    try {
+      console.log(`🔵 [AUTH SERVICE] Creating verification token...`***REMOVED***;
+      const verificationResult = await verificationService.createAndSendVerification(user***REMOVED***;
+      console.log(`✅ [AUTH SERVICE] Verification token created and email sent`***REMOVED***;
+      
+      // Log the token for testing in development
+      if (config.NODE_ENV === 'development' && verificationResult.token***REMOVED*** {
+        console.log(`\n🔥 [DEV MODE] VERIFICATION TOKEN FOR TESTING:`***REMOVED***;
+        console.log(`🔥 Email: ${email}`***REMOVED***;
+        console.log(`🔥 Token: ${verificationResult.token}`***REMOVED***;
+        console.log(`🔥 Verify URL: ${config.APP_URL}/api/auth/verify-email?token=${verificationResult.token}`***REMOVED***;
+        console.log(`🔥 Curl: curl -X POST ${config.APP_URL}/api/auth/verify-email -H "Content-Type: application/json" -d '{"token": "${verificationResult.token}"}'`***REMOVED***;
+        console.log(`\n`***REMOVED***;
+      }
+    } catch (error***REMOVED*** {
+      console.log(`❌ [AUTH SERVICE] Verification error: ${error.message}`***REMOVED***;
+      // Don't fail registration if email fails - just log it
+      // User can request verification email later
+    }
+
+    // Générer les tokens JWT (these are DIFFERENT from verification tokens!***REMOVED***
+    const accessToken = await signAccessToken({ userId: user.id }***REMOVED***;
+    const refreshTokenValue = await signRefreshToken({ userId: user.id }***REMOVED***;
+
+    // Calculer la date d'expiration du refresh token
+    const refreshExpiry = config.JWT_REFRESH_EXPIRY || "7d";
+    const expiresAt = calculateExpirationDate(refreshExpiry***REMOVED***;
+
+    // Sauvegarder le refresh token en base
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshTokenValue,
+        userId: user.id,
+        userAgent,
+        ipAddress,
+        expiresAt,
+      },
+    }***REMOVED***;
+
+    // Retourner les données sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+
+    console.log(`✅ [AUTH SERVICE] Registration complete for ${email}`***REMOVED***;
+    console.log(`✅ [AUTH SERVICE] JWT Access Token generated (for API auth***REMOVED***`***REMOVED***;
+    console.log(`✅ [AUTH SERVICE] JWT Refresh Token generated\n`***REMOVED***;
+
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken: refreshTokenValue,
+    };
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   * @param {string} email - Email de l'utilisateur
+   * @param {string} password - Mot de passe
+   * @param {string} userAgent - User agent de la requête
+   * @param {string} ipAddress - Adresse IP de la requête
+   * @returns {Promise<Object>} Utilisateur avec tokens
+   */
+  static async login(email, password, userAgent, ipAddress***REMOVED*** {
+    // Trouver l'utilisateur
+    const user = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+    if (!user || !user.password***REMOVED*** {
+      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    }
+
+    // Vérifier le mot de passe
+    const isPasswordValid = await verifyPassword(user.password, password***REMOVED***;
+    if (!isPasswordValid***REMOVED*** {
+      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    }
+
+    // Vérifier si le compte est désactivé
+    if (user.disabledAt***REMOVED*** {
+      throw new UnauthorizedException("Ce compte a été désactivé"***REMOVED***;
     }
 
     // Générer les tokens
@@ -109,12 +192,12 @@ export class AuthService {
   }
 
   /**
-  * Déconnexion d'un utilisateur
-  * @param {string} accessToken - Access token à blacklister
-  * @param {string} refreshToken - Refresh token à révoquer
-  * @param {string} userId - ID de l'utilisateur
-  * @returns {Promise<void>}
-  */
+   * Déconnexion d'un utilisateur
+   * @param {string} accessToken - Access token à blacklister
+   * @param {string} refreshToken - Refresh token à révoquer
+   * @param {string} userId - ID de l'utilisateur
+   * @returns {Promise<void>}
+   */
   static async logout(accessToken, refreshToken, userId***REMOVED*** {
     try {
       // Vérifier et décoder l'access token pour obtenir l'expiration
