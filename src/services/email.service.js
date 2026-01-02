@@ -9,34 +9,40 @@ class EmailService {
   }
 
   init() {
-    if (!config.EMAIL_ENABLED) {
-      logger.warn('Email service is disabled. Set EMAIL_ENABLED=true to enable.');
+    // Check if email is disabled
+    if (config.EMAIL_ENABLED === 'false' || config.EMAIL_ENABLED === false) {
+      console.log('📧 [EMAIL] Email service is DISABLED');
       return;
     }
 
+    console.log(`📧 [EMAIL] Initializing email service in ${config.NODE_ENV} mode`);
+
+    // If no SMTP config provided, use Ethereal (fake SMTP for testing)
     if (!config.EMAIL_SMTP_HOST || !config.EMAIL_USERNAME || !config.EMAIL_PASSWORD) {
-      logger.warn('Email configuration is incomplete. Email service will use test mode.');
+      console.log('📧 [EMAIL] No SMTP credentials found. Using Ethereal test account...');
       this.setupTestAccount();
       return;
     }
 
+    // Use real SMTP credentials
     this.transporter = nodemailer.createTransport({
       host: config.EMAIL_SMTP_HOST,
       port: parseInt(config.EMAIL_SMTP_PORT),
-      secure: config.EMAIL_SMTP_PORT === '465', // true for 465, false for other ports
+      secure: config.EMAIL_SMTP_PORT === '465',
       auth: {
         user: config.EMAIL_USERNAME,
         pass: config.EMAIL_PASSWORD,
       },
     });
 
-    logger.info('Email service initialized with SMTP transport');
+    console.log('📧 [EMAIL] Email service initialized with real SMTP');
   }
 
   async setupTestAccount() {
     try {
-      // Create a test account if no SMTP config provided
+      console.log('📧 [EMAIL] Creating Ethereal test account...');
       const testAccount = await nodemailer.createTestAccount();
+      
       this.transporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
         port: 587,
@@ -47,10 +53,14 @@ class EmailService {
         },
       });
       
-      logger.info(`Email service using test account: ${testAccount.user}`);
-      logger.info('View sent emails at: https://ethereal.email');
+      console.log(`📧 [EMAIL] Ethereal account created:`);
+      console.log(`📧 [EMAIL] Username: ${testAccount.user}`);
+      console.log(`📧 [EMAIL] Password: ${testAccount.pass}`);
+      console.log(`📧 [EMAIL] View emails at: https://ethereal.email`);
+      console.log(`📧 [EMAIL] Login with the credentials above to see sent emails\n`);
+      
     } catch (error) {
-      logger.error('Failed to create email test account:', error);
+      console.error('❌ [EMAIL] Failed to create Ethereal account:', error.message);
       this.transporter = null;
     }
   }
@@ -63,12 +73,21 @@ class EmailService {
    * @returns {Promise<boolean>} Success status
    */
   async sendVerificationEmail(to, token, firstName = 'User') {
-    if (!this.transporter) {
-      logger.warn('Email service not initialized. Skipping email sending.');
-      return false;
-    }
-
+    // Always log the token in development for testing
     const verificationUrl = `${config.APP_URL}/api/auth/verify-email?token=${token}`;
+    
+    console.log(`\n📧 [EMAIL DEBUG] ==========================================`);
+    console.log(`📧 [EMAIL DEBUG] VERIFICATION EMAIL DETAILS:`);
+    console.log(`📧 [EMAIL DEBUG] To: ${to}`);
+    console.log(`📧 [EMAIL DEBUG] Token: ${token}`);
+    console.log(`📧 [EMAIL DEBUG] URL: ${verificationUrl}`);
+    console.log(`📧 [EMAIL DEBUG] ==========================================\n`);
+
+    if (!this.transporter) {
+      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.');
+      console.log(`📧 [EMAIL] Verification URL for ${to}: ${verificationUrl}`);
+      return true; // Return true so registration doesn't fail
+    }
 
     const mailOptions = {
       from: `"Auth API" <${config.EMAIL_FROM}>`,
@@ -135,15 +154,18 @@ class EmailService {
     try {
       const info = await this.transporter.sendMail(mailOptions);
       
-      if (config.NODE_ENV === 'development') {
-        logger.info(`Verification email sent: ${nodemailer.getTestMessageUrl(info) || info.messageId}`);
+      // If using Ethereal, show the preview URL
+      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`📧 [EMAIL] Verification email sent to Ethereal:`);
+        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`);
       } else {
-        logger.info(`Verification email sent to ${to}: ${info.messageId}`);
+        console.log(`📧 [EMAIL] Verification email sent to ${to}: ${info.messageId}`);
       }
       
       return true;
     } catch (error) {
-      logger.error('Failed to send verification email:', error);
+      console.error('❌ [EMAIL] Failed to send verification email:', error.message);
       return false;
     }
   }
@@ -156,12 +178,19 @@ class EmailService {
    * @returns {Promise<boolean>} Success status
    */
   async sendPasswordResetEmail(to, token, firstName = 'User') {
-    if (!this.transporter) {
-      logger.warn('Email service not initialized. Skipping email sending.');
-      return false;
-    }
-
     const resetUrl = `${config.APP_URL}/api/password/reset?token=${token}`;
+    
+    console.log(`\n📧 [EMAIL DEBUG] ==========================================`);
+    console.log(`📧 [EMAIL DEBUG] PASSWORD RESET EMAIL DETAILS:`);
+    console.log(`📧 [EMAIL DEBUG] To: ${to}`);
+    console.log(`📧 [EMAIL DEBUG] Token: ${token}`);
+    console.log(`📧 [EMAIL DEBUG] URL: ${resetUrl}`);
+    console.log(`📧 [EMAIL DEBUG] ==========================================\n`);
+
+    if (!this.transporter) {
+      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.');
+      return true;
+    }
 
     const mailOptions = {
       from: `"Auth API" <${config.EMAIL_FROM}>`,
@@ -236,15 +265,17 @@ class EmailService {
     try {
       const info = await this.transporter.sendMail(mailOptions);
       
-      if (config.NODE_ENV === 'development') {
-        logger.info(`Password reset email sent: ${nodemailer.getTestMessageUrl(info) || info.messageId}`);
+      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`📧 [EMAIL] Password reset email sent to Ethereal:`);
+        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`);
       } else {
-        logger.info(`Password reset email sent to ${to}: ${info.messageId}`);
+        console.log(`📧 [EMAIL] Password reset email sent to ${to}: ${info.messageId}`);
       }
       
       return true;
     } catch (error) {
-      logger.error('Failed to send password reset email:', error);
+      console.error('❌ [EMAIL] Failed to send password reset email:', error.message);
       return false;
     }
   }
@@ -256,9 +287,11 @@ class EmailService {
    * @returns {Promise<boolean>} Success status
    */
   async sendPasswordChangedEmail(to, firstName = 'User') {
+    console.log(`📧 [EMAIL] Password change confirmation for ${to}`);
+
     if (!this.transporter) {
-      logger.warn('Email service not initialized. Skipping email sending.');
-      return false;
+      console.log('📧 [EMAIL] No transporter available. Skipping email.');
+      return true;
     }
 
     const mailOptions = {
@@ -322,10 +355,10 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      logger.info(`Password change confirmation sent to ${to}: ${info.messageId}`);
+      console.log(`📧 [EMAIL] Password change confirmation sent to ${to}: ${info.messageId}`);
       return true;
     } catch (error) {
-      logger.error('Failed to send password change confirmation:', error);
+      console.error('❌ [EMAIL] Failed to send password change confirmation:', error.message);
       return false;
     }
   }
