@@ -70,12 +70,12 @@ export class AuthService {
         password: hashedPassword,
         firstName,
         lastName,
-        emailVerifiedAt: config.NODE_ENV === 'development' ? new Date() : null, // Auto-verify in dev
+        emailVerifiedAt: null,
       },
     });
 
     // Send verification email (except in development)
-    if (config.NODE_ENV !== 'development') {
+    if (config.EMAIL_ENABLED) {
       await verificationService.createAndSendVerification(user);
     }
 

@@ -1,58 +1,682 @@
-src:
-config
-controllers
-dto
-index.js
-lib
-middlewares
-routes
-schemas
-services
 
-src/config:
-env.js
+═══════════════════════════════════════════════════
+Directory Structure:
+═══════════════════════════════════════════════════\n
+📁 ./src/controllers/
+├── auth.controller.js
+├── email.controller.js
+├── oauth.controller.js
+├── password.controller.js
+└── user.controller.js
 
-src/controllers:
-auth.controller.js
-email.controller.js
-oauth.controller.js
-password.controller.js
-user.controller.js
+═══════════════════════════════════════════════════
+File Contents:
+═══════════════════════════════════════════════════
 
-src/dto:
-user.dto.js
+File: ./src/controllers/auth.controller.js
+---
+     1  import { AuthService } from "#services/auth.service";
+     2  import { validateData } from "#lib/validate";
+     3  import { registerSchema, loginSchema, refreshTokenSchema } from "#schemas/auth.schema";
+     4  export class AuthController {
+     5  /**
+     6  * Inscription d'un nouvel utilisateur
+     7  * POST /api/auth/register
+     8  */
+     9  static async register(req, res) {
+    10  const validatedData = validateData(registerSchema, req.body);
+    11  const userAgent = req.headers["user-agent"] || null;
+    12  const ipAddress = req.ip || req.connection.remoteAddress || null;
+    13  const result = await AuthService.register(
+    14  validatedData,
+    15  userAgent,
+    16  ipAddress
+    17  );
+    18  res.status(201).json({
+    19  success: true,
+    20  message: "Inscription réussie",
+    21  user: {
+    22  id: result.user.id,
+    23  email: result.user.email,
+    24  firstName: result.user.firstName,
+    25  lastName: result.user.lastName,
+    26  createdAt: result.user.createdAt,
+    27  },
+    28  accessToken: result.accessToken,
+    29  refreshToken: result.refreshToken,
+    30  });
+    31  }
+    32  /**
+    33  * Connexion d'un utilisateur
+    34  * POST /api/auth/login
+    35  */
+    36  static async login(req, res) {
+    37  const validatedData = validateData(loginSchema, req.body);
+    38  const userAgent = req.headers["user-agent"] || null;
+    39  const ipAddress = req.ip || req.connection.remoteAddress || null;
+    40  const result = await AuthService.login(
+    41  validatedData.email,
+    42  validatedData.password,
+    43  userAgent,
+    44  ipAddress
+    45  );
+    46  res.json({
+    47  success: true,
+    48  message: "Connexion réussie",
+    49  user: {
+    50  id: result.user.id,
+    51  email: result.user.email,
+    52  firstName: result.user.firstName,
+    53  lastName: result.user.lastName,
+    54  createdAt: result.user.createdAt,
+    55  },
+    56  accessToken: result.accessToken,
+    57  refreshToken: result.refreshToken,
+    58  });
+    59  }
+    60  /**
+    61  * Déconnexion d'un utilisateur
+    62  * POST /api/auth/logout
+    63  */
+    64  static async logout(req, res) {
+    65  const authHeader = req.headers["authorization"];
+    66  const accessToken = authHeader?.split(" ")[1];
+    67  const { refreshToken } = req.body || {};
+    68  const userId = req.user?.userId || req.user?.id;
+    69  if (!userId) {
+    70  return res.status(401).json({
+    71  success: false,
+    72  message: "Non authentifié",
+    73  });
+    74  }
+    75  await AuthService.logout(accessToken, refreshToken, userId);
+    76  res.json({
+    77  success: true,
+    78  message: "Déconnexion réussie",
+    79  });
+    80  }
+    81  /**
+    82  * Rafraîchir les tokens
+    83  * POST /api/auth/refresh
+    84  */
+    85  static async refresh(req, res) {
+    86  const validatedData = validateData(refreshTokenSchema, req.body);
+    87  const userAgent = req.headers["user-agent"] || null;
+    88  const ipAddress = req.ip || req.connection.remoteAddress || null;
+    89  const result = await AuthService.refresh(
+    90  validatedData.refreshToken,
+    91  userAgent,
+    92  ipAddress
+    93  );
+    94  res.json({
+    95  success: true,
+    96  message: "Tokens rafraîchis avec succès",
+    97  accessToken: result.accessToken,
+    98  refreshToken: result.refreshToken,
+    99  });
+   100  }
+   101  }
 
-src/lib:
-async-handler.js
-exceptions.js
-jwt.js
-logger.js
-oauth.js
-password.js
-prisma.js
-validate.js
+File: ./src/controllers/email.controller.js
+---
+     1  import { validateData } from '#lib/validate';
+     2  import verificationService from '#services/verification.service';
+     3  import { BadRequestException } from '#lib/exceptions';
+     4  import { logger } from '#lib/logger';
+     5  // Validation schemas
+     6  import { z } from 'zod';
+     7  const verifyEmailSchema = z.object({
+     8  token: z.string().min(1, 'Verification token is required'),
+     9  });
+    10  const resendVerificationSchema = z.object({
+    11  email: z.string().email('Valid email is required'),
+    12  });
+    13  export class EmailController {
+    14  /**
+    15  * Verify email with token
+    16  * GET /api/auth/verify-email?token=xyz
+    17  * OR POST /api/auth/verify-email (with token in body)
+    18  */
+    19  static async verifyEmail(req, res) {
+    20  // Support both GET with query param and POST with body
+    21  const token = req.query.token || req.body.token;
+    22  if (!token) {
+    23  throw new BadRequestException('Verification token is required');
+    24  }
+    25  const validatedData = validateData(verifyEmailSchema, { token });
+    26  const result = await verificationService.verifyEmail(validatedData.token);
+    27  res.json({
+    28  success: true,
+    29  ...result,
+    30  });
+    31  }
+    32  /**
+    33  * Resend verification email
+    34  * POST /api/auth/resend-verification
+    35  */
+    36  static async resendVerification(req, res) {
+    37  const validatedData = validateData(resendVerificationSchema, req.body);
+    38  const result = await verificationService.resendVerification(validatedData.email);
+    39  res.json({
+    40  success: true,
+    41  ...result,
+    42  });
+    43  }
+    44  }
 
-src/middlewares:
-auth.js
-error-handler.js
-not-found.js
+File: ./src/controllers/oauth.controller.js
+---
+     1  import { signAccessToken, signRefreshToken } from "#lib/jwt";
+     2  import { findOrCreateOAuthUser } from "#services/oauth.service";
+     3  import { logger } from "#lib/logger";
+     4  import prisma from "#lib/prisma";
+     5  /**
+     6  * Initie la redirection vers Google OAuth
+     7  * Passport gère automatiquement la redirection
+     8  */
+     9  export const initiateGoogleOAuth = (req, res) => {
+    10  logger.info("Google OAuth initiation request");
+    11  // Passport middleware gère la redirection
+    12  };
+    13  /**
+    14  * Callback Google OAuth - Traite la réponse de Google et crée/lie l'utilisateur
+    15  * @param {Object} req - Requête Express avec user depuis Passport
+    16  * @param {Object} res - Réponse Express
+    17  */
+    18  export const handleGoogleCallback = async (req, res) => {
+    19  try {
+    20  logger.info("Google OAuth callback received");
+    21  // Passport a déjà authentifié et mis en place req.user
+    22  if (!req.user) {
+    23  logger.warn("No user in callback request");
+    24  return res.status(401).json({
+    25  success: false,
+    26  message: "Authentification échouée",
+    27  });
+    28  }
+    29  // Trouver ou créer l'utilisateur OAuth
+    30  const user = await findOrCreateOAuthUser({
+    31  provider: "google",
+    32  id: req.user.id,
+    33  profile: req.user.profile,
+    34  });
+    35  if (!user) {
+    36  logger.error("Failed to create/find OAuth user");
+    37  return res.status(500).json({
+    38  success: false,
+    39  message: "Erreur lors de la création du compte",
+    40  });
+    41  }
+    42  // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+    43  const updatedUser = await prisma.user.findUnique({
+    44  where: { id: user.id },
+    45  include: { oauthAccounts: true },
+    46  });
+    47  // Générer les tokens JWT
+    48  const accessToken = await signAccessToken({
+    49  id: updatedUser.id,
+    50  email: updatedUser.email,
+    51  });
+    52  const refreshToken = await signRefreshToken({
+    53  id: updatedUser.id,
+    54  email: updatedUser.email,
+    55  });
+    56  // Sauvegarder le refresh token en BD (optionnel, mais recommandé)
+    57  await prisma.refreshToken.create({
+    58  data: {
+    59  token: refreshToken,
+    60  userId: updatedUser.id,
+    61  userAgent: req.headers["user-agent"],
+    62  ipAddress: req.ip,
+    63  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
+    64  },
+    65  });
+    66  logger.info(`Google OAuth user authenticated: ${updatedUser.id}`);
+    67  // Retourner les tokens
+    68  return res.json({
+    69  success: true,
+    70  message: "Authentification Google réussie",
+    71  data: {
+    72  user: {
+    73  id: updatedUser.id,
+    74  email: updatedUser.email,
+    75  firstName: updatedUser.firstName,
+    76  lastName: updatedUser.lastName,
+    77  oauthProviders: updatedUser.oauthAccounts.map((acc) => acc.provider),
+    78  },
+    79  accessToken,
+    80  refreshToken,
+    81  },
+    82  });
+    83  } catch (error) {
+    84  logger.error(`Google OAuth callback error: ${error.message}`);
+    85  return res.status(500).json({
+    86  success: false,
+    87  message: "Erreur serveur lors de l'authentification",
+    88  error: error.message,
+    89  });
+    90  }
+    91  };
+    92  /**
+    93  * Initie la redirection vers GitHub OAuth
+    94  * Passport gère automatiquement la redirection
+    95  */
+    96  export const initiateGitHubOAuth = (req, res) => {
+    97  logger.info("GitHub OAuth initiation request");
+    98  // Passport middleware gère la redirection
+    99  };
+   100  /**
+   101  * Callback GitHub OAuth - Traite la réponse de GitHub et crée/lie l'utilisateur
+   102  * @param {Object} req - Requête Express avec user depuis Passport
+   103  * @param {Object} res - Réponse Express
+   104  */
+   105  export const handleGitHubCallback = async (req, res) => {
+   106  try {
+   107  logger.info("GitHub OAuth callback received");
+   108  // Passport a déjà authentifié et mis en place req.user
+   109  if (!req.user) {
+   110  logger.warn("No user in callback request");
+   111  return res.status(401).json({
+   112  success: false,
+   113  message: "Authentification échouée",
+   114  });
+   115  }
+   116  // Trouver ou créer l'utilisateur OAuth
+   117  const user = await findOrCreateOAuthUser({
+   118  provider: "github",
+   119  id: req.user.id,
+   120  profile: req.user.profile,
+   121  });
+   122  if (!user) {
+   123  logger.error("Failed to create/find OAuth user");
+   124  return res.status(500).json({
+   125  success: false,
+   126  message: "Erreur lors de la création du compte",
+   127  });
+   128  }
+   129  // Récupérer les tokens depuis la BD pour s'assurer que c'est à jour
+   130  const updatedUser = await prisma.user.findUnique({
+   131  where: { id: user.id },
+   132  include: { oauthAccounts: true },
+   133  });
+   134  // Générer les tokens JWT
+   135  const accessToken = await signAccessToken({
+   136  id: updatedUser.id,
+   137  email: updatedUser.email,
+   138  });
+   139  const refreshToken = await signRefreshToken({
+   140  id: updatedUser.id,
+   141  email: updatedUser.email,
+   142  });
+   143  // Sauvegarder le refresh token en BD (optionnel, mais recommandé)
+   144  await prisma.refreshToken.create({
+   145  data: {
+   146  token: refreshToken,
+   147  userId: updatedUser.id,
+   148  userAgent: req.headers["user-agent"],
+   149  ipAddress: req.ip,
+   150  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
+   151  },
+   152  });
+   153  logger.info(`GitHub OAuth user authenticated: ${updatedUser.id}`);
+   154  // Retourner les tokens
+   155  return res.json({
+   156  success: true,
+   157  message: "Authentification GitHub réussie",
+   158  data: {
+   159  user: {
+   160  id: updatedUser.id,
+   161  email: updatedUser.email,
+   162  firstName: updatedUser.firstName,
+   163  lastName: updatedUser.lastName,
+   164  oauthProviders: updatedUser.oauthAccounts.map((acc) => acc.provider),
+   165  },
+   166  accessToken,
+   167  refreshToken,
+   168  },
+   169  });
+   170  } catch (error) {
+   171  logger.error(`GitHub OAuth callback error: ${error.message}`);
+   172  return res.status(500).json({
+   173  success: false,
+   174  message: "Erreur serveur lors de l'authentification",
+   175  error: error.message,
+   176  });
+   177  }
+   178  };
 
-src/routes:
-auth.routes.js
-email.route.js
-oauth.routes.js
-password.route.js
-user.routes.js
+File: ./src/controllers/password.controller.js
+---
+     1  import { validateData } from '#lib/validate';
+     2  import passwordService from '#services/password.service';
+     3  // Validation schemas
+     4  import { z } from 'zod';
+     5  const forgotPasswordSchema = z.object({
+     6  email: z.string().email('Valid email is required'),
+     7  });
+     8  const resetPasswordSchema = z.object({
+     9  token: z.string().min(1, 'Reset token is required'),
+    10  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    11  });
+    12  const changePasswordSchema = z.object({
+    13  currentPassword: z.string().min(1, 'Current password is required'),
+    14  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+    15  });
+    16  const setPasswordSchema = z.object({
+    17  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    18  });
+    19  export class PasswordController {
+    20  /**
+    21  * Request password reset (forgot password)
+    22  * POST /api/password/forgot
+    23  */
+    24  static async forgotPassword(req, res) {
+    25  const validatedData = validateData(forgotPasswordSchema, req.body);
+    26  const result = await passwordService.forgotPassword(validatedData.email);
+    27  res.json({
+    28  success: true,
+    29  ...result,
+    30  });
+    31  }
+    32  /**
+    33  * Reset password with token
+    34  * POST /api/password/reset
+    35  */
+    36  static async resetPassword(req, res) {
+    37  // Support both query param and body
+    38  const token = req.query.token || req.body.token;
+    39  const newPassword = req.body.newPassword;
+    40  if (!token || !newPassword) {
+    41  return res.status(400).json({
+    42  success: false,
+    43  error: 'Token and new password are required',
+    44  });
+    45  }
+    46  const validatedData = validateData(resetPasswordSchema, { token, newPassword });
+    47  const result = await passwordService.resetPassword(
+    48  validatedData.token,
+    49  validatedData.newPassword
+    50  );
+    51  res.json({
+    52  success: true,
+    53  ...result,
+    54  });
+    55  }
+    56  /**
+    57  * Change password for authenticated user
+    58  * PUT /api/password/change
+    59  */
+    60  static async changePassword(req, res) {
+    61  const validatedData = validateData(changePasswordSchema, req.body);
+    62  const userId = req.user.userId || req.user.id;
+    63  if (!userId) {
+    64  return res.status(401).json({
+    65  success: false,
+    66  error: 'Authentication required',
+    67  });
+    68  }
+    69  const result = await passwordService.changePassword(
+    70  userId,
+    71  validatedData.currentPassword,
+    72  validatedData.newPassword
+    73  );
+    74  res.json({
+    75  success: true,
+    76  ...result,
+    77  });
+    78  }
+    79  /**
+    80  * Set password for OAuth user
+    81  * POST /api/password/set
+    82  */
+    83  static async setPassword(req, res) {
+    84  const validatedData = validateData(setPasswordSchema, req.body);
+    85  const userId = req.user.userId || req.user.id;
+    86  if (!userId) {
+    87  return res.status(401).json({
+    88  success: false,
+    89  error: 'Authentication required',
+    90  });
+    91  }
+    92  const result = await passwordService.setPassword(
+    93  userId,
+    94  validatedData.newPassword
+    95  );
+    96  res.json({
+    97  success: true,
+    98  ...result,
+    99  });
+   100  }
+   101  }
 
-src/schemas:
-auth.schema.js
-email-password.schema.js
-user.schema.js
+File: ./src/controllers/user.controller.js
+---
+     1  import { UserService } from "#services/user.service";
+     2  import { UserDto } from "#dto/user.dto";
+     3  import { signToken } from "#lib/jwt";
+     4  import { validateData } from "#lib/validate";
+     5  import { registerSchema, loginSchema } from "#schemas/user.schema";
+     6  export class UserController {
+     7  static async register(req, res) {
+     8  const validatedData = validateData(registerSchema, req.body);
+     9  const user = await UserService.register(validatedData);
+    10  const token = await signToken({ userId: user.id });
+    11  res.status(201).json({
+    12  success: true,
+    13  user: UserDto.transform(user),
+    14  token,
+    15  });
+    16  }
+    17  static async login(req, res) {
+    18  const validatedData = validateData(loginSchema, req.body);
+    19  const { email, password } = validatedData;
+    20  const user = await UserService.login(email, password);
+    21  const token = await signToken({ userId: user.id });
+    22  res.json({
+    23  success: true,
+    24  user: UserDto.transform(user),
+    25  token,
+    26  });
+    27  }
+    28  static async getAll(req, res) {
+    29  const users = await UserService.findAll();
+    30  res.json({
+    31  success: true,
+    32  users: UserDto.transform(users),
+    33  });
+    34  }
+    35  static async getById(req, res) {
+    36  const user = await UserService.findById(parseInt(req.params.id));
+    37  res.json({
+    38  success: true,
+    39  user: UserDto.transform(user),
+    40  });
+    41  }
+    42  }
 
-src/services:
-auth.service.js
-email.service.js
-oauth.service.js
-password.service.js
-user.service.js
-verification.service.js
+Processed 5 files from ./src/controllers/
+
+═══════════════════════════════════════════════════
+Directory Structure:
+═══════════════════════════════════════════════════\n
+📁 ./src/routes/
+├── auth.routes.js
+├── email.routes.js
+├── oauth.routes.js
+├── password.routes.js
+└── user.routes.js
+
+═══════════════════════════════════════════════════
+File Contents:
+═══════════════════════════════════════════════════
+
+File: ./src/routes/auth.routes.js
+---
+     1  import { Router } from "express";
+     2  import { AuthController } from "#controllers/auth.controller";
+     3  import { asyncHandler } from "#lib/async-handler";
+     4  import { auth } from "#middlewares/auth";
+     5  const router = Router();
+     6  // Routes publiques
+     7  router.post("/register", asyncHandler(AuthController.register));
+     8  router.post("/login", asyncHandler(AuthController.login));
+     9  router.post("/refresh", asyncHandler(AuthController.refresh));
+    10  // Routes protégées (nécessitent authentification)
+    11  router.post("/logout", auth, asyncHandler(AuthController.logout));
+    12  export default router;
+
+File: ./src/routes/email.routes.js
+---
+     1  import { Router } from 'express';
+     2  import { EmailController } from '#controllers/email.controller';
+     3  import { asyncHandler } from '#lib/async-handler';
+     4  import prisma from '#lib/prisma';  //for testing
+     5  const router = Router();
+     6  // Email verification routes
+     7  router.get('/verify-email', asyncHandler(EmailController.verifyEmail)); // GET with query param
+     8  router.post('/verify-email', asyncHandler(EmailController.verifyEmail)); // POST with body
+     9  router.post('/resend-verification', asyncHandler(EmailController.resendVerification));
+    10  // Debug route - GET /api/auth/debug/verification-tokens
+    11  router.get('/debug/verification-tokens', async (req, res) => {
+    12  try {
+    13  const tokens = await prisma.verificationToken.findMany({
+    14  include: {
+    15  user: {
+    16  select: {
+    17  email: true,
+    18  emailVerifiedAt: true,
+    19  },
+    20  },
+    21  },
+    22  });
+    23  const users = await prisma.user.findMany({
+    24  select: {
+    25  id: true,
+    26  email: true,
+    27  emailVerifiedAt: true,
+    28  createdAt: true,
+    29  },
+    30  });
+    31  res.json({
+    32  success: true,
+    33  verificationTokens: {
+    34  count: tokens.length,
+    35  tokens: tokens.map(t => ({
+    36  id: t.id,
+    37  token: t.token, // Show full token for testing
+    38  userId: t.userId,
+    39  userEmail: t.user.email,
+    40  expiresAt: t.expiresAt,
+    41  createdAt: t.createdAt,
+    42  })),
+    43  },
+    44  users: users.map(u => ({
+    45  id: u.id,
+    46  email: u.email,
+    47  emailVerifiedAt: u.emailVerifiedAt,
+    48  createdAt: u.createdAt,
+    49  })),
+    50  });
+    51  } catch (error) {
+    52  res.status(500).json({
+    53  success: false,
+    54  error: error.message,
+    55  });
+    56  }
+    57  });
+    58  export default router;
+
+File: ./src/routes/oauth.routes.js
+---
+     1  import express from "express";
+     2  import passport from "#lib/oauth";
+     3  import {
+     4  initiateGoogleOAuth,
+     5  handleGoogleCallback,
+     6  initiateGitHubOAuth,
+     7  handleGitHubCallback,
+     8  } from "#controllers/oauth.controller";
+     9  const router = express.Router();
+    10  /**
+    11  * GET /api/oauth/google
+    12  * Redirige l'utilisateur vers la page de connexion Google
+    13  * Passport gère automatiquement la redirection avec les paramètres OAuth
+    14  */
+    15  router.get(
+    16  "/google",
+    17  passport.authenticate("google", {
+    18  scope: ["profile", "email"],
+    19  session: false  // ← ADD THIS LINE
+    20  }),
+    21  initiateGoogleOAuth
+    22  );
+    23  /**
+    24  * GET /api/oauth/google/callback
+    25  * Callback de Google - Passport valide le code d'autorisation et remplit req.user
+    26  * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+    27  */
+    28  router.get(
+    29  "/google/callback",
+    30  passport.authenticate("google", {
+    31  failureRedirect: "/login?error=google_auth_failed",
+    32  session: false  // ← ADD THIS LINE
+    33  }),
+    34  handleGoogleCallback
+    35  );
+    36  /**
+    37  * GET /api/oauth/github
+    38  * Redirige l'utilisateur vers la page de connexion GitHub
+    39  * Passport gère automatiquement la redirection avec les paramètres OAuth
+    40  */
+    41  router.get(
+    42  "/github",
+    43  passport.authenticate("github", {
+    44  scope: ["user:email"],
+    45  session: false  // ← ADD THIS LINE
+    46  }),
+    47  initiateGitHubOAuth
+    48  );
+    49  /**
+    50  * GET /api/oauth/github/callback
+    51  * Callback de GitHub - Passport valide le code d'autorisation et remplit req.user
+    52  * Ensuite, le contrôleur traite la création/liaison de l'utilisateur
+    53  */
+    54  router.get(
+    55  "/github/callback",
+    56  passport.authenticate("github", {
+    57  failureRedirect: "/login?error=github_auth_failed",
+    58  session: false  // ← ADD THIS LINE
+    59  }),
+    60  handleGitHubCallback
+    61  );
+    62  export default router;
+
+File: ./src/routes/password.routes.js
+---
+     1  import { Router } from 'express';
+     2  import { PasswordController } from '#controllers/password.controller';
+     3  import { asyncHandler } from '#lib/async-handler';
+     4  import { auth } from '#middlewares/auth';
+     5  const router = Router();
+     6  // Public routes
+     7  router.post('/forgot', asyncHandler(PasswordController.forgotPassword));
+     8  router.get('/reset', asyncHandler(PasswordController.resetPassword)); // GET with query param
+     9  router.post('/reset', asyncHandler(PasswordController.resetPassword)); // POST with body
+    10  // Protected routes (require authentication)
+    11  router.put('/change', auth, asyncHandler(PasswordController.changePassword));
+    12  router.post('/set', auth, asyncHandler(PasswordController.setPassword));
+    13  export default router;
+
+File: ./src/routes/user.routes.js
+---
+     1  import { Router } from "express";
+     2  import { UserController } from "#controllers/user.controller";
+     3  import { asyncHandler } from "#lib/async-handler";
+     4  import { auth } from "#middlewares/auth";
+     5  const router = Router();
+     6  // Consultation de la liste ou d'un utilisateur
+     7  router.get("/", asyncHandler(UserController.getAll));
+     8  router.get("/:id", auth, asyncHandler(UserController.getById));
+     9  export default router;
+
+Processed 5 files from ./src/routes/
