@@ -13,11 +13,11 @@ import authRouter from "#routes/auth.routes";
 import oauthRouter from "#routes/oauth.routes";
 import emailRouter from "#routes/email.routes";
 import passwordRouter from "#routes/password.routes";
-import sessionRouter from "#routes/session.routes"; // AJOUTEZ CETTE LIGNE
-import twoFactorRouter from "#routes/two-factor.routes"; // AJOUTEZ CETTE LIGNE
+import sessionRouter from "#routes/session.routes";
+import twoFactorRouter from "#routes/two-factor.routes";
+import profileRouter from "#routes/profile.routes"; // AJOUT IMPORT
 import { config } from "#config/env";
 import passport, { initializePassportStrategies } from "#lib/oauth";
-import profileRouter from '#routes/profile.routes';
 
 const app = express(***REMOVED***;
 const PORT = config.PORT || 3000;
@@ -48,16 +48,15 @@ app.use("/api/auth", emailRouter***REMOVED***;
 app.use("/api/password", passwordRouter***REMOVED***;
 app.use("/api/users", userRouter***REMOVED***;
 app.use("/api/oauth", oauthRouter***REMOVED***;
-app.use("/api/sessions", sessionRouter***REMOVED***; // AJOUTEZ CETTE LIGNE
-app.use("/api/2fa", twoFactorRouter***REMOVED***; // AJOUTEZ CETTE LIGNE
+app.use("/api/sessions", sessionRouter***REMOVED***;
+app.use("/api/2fa", twoFactorRouter***REMOVED***;
+app.use("/api/profile", profileRouter***REMOVED***; // DÉPLACÉ ICI
 
-// 404 handler
+// 404 handler - DOIT ÊTRE APRÈS TOUTES LES ROUTES
 app.use(notFoundHandler***REMOVED***;
 
 // Global error handler
 app.use(errorHandler***REMOVED***;
-
-app.use("/api/profile", profileRouter***REMOVED***;
 
 app.listen(PORT, (***REMOVED*** => {
   logger.info(`Serveur démarré sur http://localhost:${PORT}`***REMOVED***;
