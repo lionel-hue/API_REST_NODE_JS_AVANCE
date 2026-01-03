@@ -17,6 +17,7 @@ import sessionRouter from "#routes/session.routes"; // AJOUTEZ CETTE LIGNE
 import twoFactorRouter from "#routes/two-factor.routes"; // AJOUTEZ CETTE LIGNE
 import { config } from "#config/env";
 import passport, { initializePassportStrategies } from "#lib/oauth";
+import profileRouter from '#routes/profile.routes';
 
 const app = express(***REMOVED***;
 const PORT = config.PORT || 3000;
@@ -55,6 +56,8 @@ app.use(notFoundHandler***REMOVED***;
 
 // Global error handler
 app.use(errorHandler***REMOVED***;
+
+app.use("/api/profile", profileRouter***REMOVED***;
 
 app.listen(PORT, (***REMOVED*** => {
   logger.info(`Serveur démarré sur http://localhost:${PORT}`***REMOVED***;
