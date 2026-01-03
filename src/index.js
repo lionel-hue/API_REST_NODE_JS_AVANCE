@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
-
 dotenv.config(***REMOVED***;
 
 import { logger, httpLogger } from "#lib/logger";
@@ -12,8 +11,10 @@ import { auth } from "#middlewares/auth";
 import userRouter from "#routes/user.routes";
 import authRouter from "#routes/auth.routes";
 import oauthRouter from "#routes/oauth.routes";
-import emailRouter from "#routes/email.routes"; // Add this
-import passwordRouter from "#routes/password.routes"; // Add this
+import emailRouter from "#routes/email.routes";
+import passwordRouter from "#routes/password.routes";
+import sessionRouter from "#routes/session.routes"; // AJOUTEZ CETTE LIGNE
+import twoFactorRouter from "#routes/two-factor.routes"; // AJOUTEZ CETTE LIGNE
 import { config } from "#config/env";
 import passport, { initializePassportStrategies } from "#lib/oauth";
 
@@ -28,6 +29,7 @@ app.use(helmet(***REMOVED******REMOVED***;
 app.use(cors(***REMOVED******REMOVED***;
 app.use(httpLogger***REMOVED***;
 app.use(express.json(***REMOVED******REMOVED***;
+
 // Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer***REMOVED***
 app.set('trust proxy', true***REMOVED***;
 
@@ -41,10 +43,12 @@ app.get("/", (req, res***REMOVED*** => {
 
 // Utilisation des routes
 app.use("/api/auth", authRouter***REMOVED***;
-app.use("/api/auth", emailRouter***REMOVED***; // Add email routes under /api/auth
-app.use("/api/password", passwordRouter***REMOVED***; // Add password routes
+app.use("/api/auth", emailRouter***REMOVED***;
+app.use("/api/password", passwordRouter***REMOVED***;
 app.use("/api/users", userRouter***REMOVED***;
 app.use("/api/oauth", oauthRouter***REMOVED***;
+app.use("/api/sessions", sessionRouter***REMOVED***; // AJOUTEZ CETTE LIGNE
+app.use("/api/2fa", twoFactorRouter***REMOVED***; // AJOUTEZ CETTE LIGNE
 
 // 404 handler
 app.use(notFoundHandler***REMOVED***;
