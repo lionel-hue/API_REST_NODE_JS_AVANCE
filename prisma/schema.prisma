@@ -1,54 +1,53 @@
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL"***REMOVED***
+  url = env("DATABASE_URL"***REMOVED***
 }
 
 model User {
-  id                  String               @id @default(uuid(***REMOVED******REMOVED***
-  email               String               @unique
-  password            String?
-  firstName           String
-  lastName            String
-  emailVerifiedAt     DateTime?
-  twoFactorSecret     String?
-  twoFactorEnabledAt  DateTime?
-  disabledAt          DateTime?
-  createdAt           DateTime             @default(now(***REMOVED******REMOVED***
-  updatedAt           DateTime             @updatedAt
-  
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  email String @unique
+  password String?
+  firstName String
+  lastName String
+  emailVerifiedAt DateTime?
+  twoFactorSecret String?
+  twoFactorEnabledAt DateTime?
+  disabledAt DateTime?
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
+  updatedAt DateTime @updatedAt
+
   // Relations
-  oauthAccounts       OAuthAccount[]
-  refreshTokens       RefreshToken[]
-  blacklistedTokens   BlacklistedAccessToken[]
-  verificationTokens  VerificationToken[]
+  oauthAccounts OAuthAccount[]
+  refreshTokens RefreshToken[]
+  blacklistedTokens BlacklistedAccessToken[]
+  verificationTokens VerificationToken[]
   passwordResetTokens PasswordResetToken[]
-  loginHistories      LoginHistory[]
+  loginHistories LoginHistory[]
 
   @@map("users"***REMOVED***
 }
 
 model OAuthAccount {
-  id         String   @id @default(uuid(***REMOVED******REMOVED***
-  provider   String
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  provider String
   providerId String
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  createdAt  DateTime @default(now(***REMOVED******REMOVED***
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  createdAt DateTime @default(now(***REMOVED******REMOVED***
 
   @@unique([provider, providerId]***REMOVED***
   @@map("oauth_accounts"***REMOVED***
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
   userAgent String?
   ipAddress String?
   expiresAt DateTime
@@ -59,10 +58,10 @@ model RefreshToken {
 }
 
 model BlacklistedAccessToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
   expiresAt DateTime
   createdAt DateTime @default(now(***REMOVED******REMOVED***
 
@@ -70,10 +69,10 @@ model BlacklistedAccessToken {
 }
 
 model VerificationToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
   expiresAt DateTime
   createdAt DateTime @default(now(***REMOVED******REMOVED***
 
@@ -81,10 +80,10 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  token String @unique
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
   expiresAt DateTime
   createdAt DateTime @default(now(***REMOVED******REMOVED***
 
@@ -92,12 +91,12 @@ model PasswordResetToken {
 }
 
 model LoginHistory {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
+  id String @id @default(uuid(***REMOVED******REMOVED***
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
   ipAddress String?
   userAgent String?
-  success   Boolean
+  success Boolean
   createdAt DateTime @default(now(***REMOVED******REMOVED***
 
   @@map("login_histories"***REMOVED***
