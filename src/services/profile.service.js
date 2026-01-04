@@ -5,7 +5,7 @@ export class ProfileService {
   /**
    * Obtenir les statistiques du profil
    */
-  static async getProfileStats(userId***REMOVED*** {
+  static async getProfileStats(userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -28,10 +28,10 @@ export class ProfileService {
           },
         },
       },
-    }***REMOVED***;
+    });
 
-    if (!user***REMOVED*** {
-      throw new NotFoundException('User not found'***REMOVED***;
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
     return {
@@ -39,7 +39,7 @@ export class ProfileService {
       oauthConnections: user._count.oauthAccounts,
       loginHistory: user._count.loginHistories,
       recentSessions: user.refreshTokens,
-      accountAge: Math.floor((new Date(***REMOVED*** - new Date(user.createdAt***REMOVED******REMOVED*** / (1000 * 60 * 60 * 24***REMOVED******REMOVED***,
+      accountAge: Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24)),
     };
   }
 }
