@@ -12,7 +12,7 @@ export const globalLimiter = rateLimit({
     success: false,
     error: 'Too many requests, please try again later.',
   },
-}***REMOVED***;
+});
 
 // Strict limiter for auth endpoints
 export const authLimiter = rateLimit({
@@ -23,7 +23,7 @@ export const authLimiter = rateLimit({
     success: false,
     error: 'Too many login attempts, please try again later.',
   },
-}***REMOVED***;
+});
 
 // 2FA verification limiter
 export const twoFactorLimiter = rateLimit({
@@ -33,10 +33,10 @@ export const twoFactorLimiter = rateLimit({
     success: false,
     error: 'Too many 2FA attempts, please try again later.',
   },
-}***REMOVED***;
+});
 
 // Custom rate limiter
-export const createRateLimiter = (windowMs, max, message***REMOVED*** => {
+export const createRateLimiter = (windowMs, max, message) => {
   return rateLimit({
     windowMs,
     max,
@@ -44,5 +44,5 @@ export const createRateLimiter = (windowMs, max, message***REMOVED*** => {
       success: false,
       error: 'Too many requests, please try again later.',
     },
-  }***REMOVED***;
+  });
 };

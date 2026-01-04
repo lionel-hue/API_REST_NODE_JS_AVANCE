@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
-dotenv.config(***REMOVED***;
+dotenv.config();
 
 import { logger, httpLogger } from "#lib/logger";
 import { errorHandler } from "#middlewares/error-handler";
@@ -19,45 +19,45 @@ import profileRouter from "#routes/profile.routes"; // AJOUT IMPORT
 import { config } from "#config/env";
 import passport, { initializePassportStrategies } from "#lib/oauth";
 
-const app = express(***REMOVED***;
+const app = express();
 const PORT = config.PORT || 3000;
 
 // Initialiser les stratégies Passport OAuth
-initializePassportStrategies(***REMOVED***;
+initializePassportStrategies();
 
 // Middlewares
-app.use(helmet(***REMOVED******REMOVED***;
-app.use(cors(***REMOVED******REMOVED***;
-app.use(httpLogger***REMOVED***;
-app.use(express.json(***REMOVED******REMOVED***;
+app.use(helmet());
+app.use(cors());
+app.use(httpLogger);
+app.use(express.json());
 
-// Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer***REMOVED***
-app.set('trust proxy', true***REMOVED***;
+// Configuration pour récupérer l'IP réelle (nécessaire pour proxy/load balancer)
+app.set('trust proxy', true);
 
 // Initialiser Passport
-app.use(passport.initialize(***REMOVED******REMOVED***;
+app.use(passport.initialize());
 
 // Routes
-app.get("/", (req, res***REMOVED*** => {
-  res.json({ success: true, message: "API Express opérationnelle" }***REMOVED***;
-}***REMOVED***;
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "API Express opérationnelle" });
+});
 
 // Utilisation des routes
-app.use("/api/auth", authRouter***REMOVED***;
-app.use("/api/auth", emailRouter***REMOVED***;
-app.use("/api/password", passwordRouter***REMOVED***;
-app.use("/api/users", userRouter***REMOVED***;
-app.use("/api/oauth", oauthRouter***REMOVED***;
-app.use("/api/sessions", sessionRouter***REMOVED***;
-app.use("/api/2fa", twoFactorRouter***REMOVED***;
-app.use("/api/profile", profileRouter***REMOVED***; // DÉPLACÉ ICI
+app.use("/api/auth", authRouter);
+app.use("/api/auth", emailRouter);
+app.use("/api/password", passwordRouter);
+app.use("/api/users", userRouter);
+app.use("/api/oauth", oauthRouter);
+app.use("/api/sessions", sessionRouter);
+app.use("/api/2fa", twoFactorRouter);
+app.use("/api/profile", profileRouter); // DÉPLACÉ ICI
 
 // 404 handler - DOIT ÊTRE APRÈS TOUTES LES ROUTES
-app.use(notFoundHandler***REMOVED***;
+app.use(notFoundHandler);
 
 // Global error handler
-app.use(errorHandler***REMOVED***;
+app.use(errorHandler);
 
-app.listen(PORT, (***REMOVED*** => {
-  logger.info(`Serveur démarré sur http://localhost:${PORT}`***REMOVED***;
-}***REMOVED***;
+app.listen(PORT, () => {
+  logger.info(`Serveur démarré sur http://localhost:${PORT}`);
+});
