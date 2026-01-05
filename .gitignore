@@ -1,4 +1,3 @@
-test.txt
 # Fichier .gitignore à ajouter
 
 ```gitignore
@@ -6,6 +5,7 @@ test.txt
 node_modules/
 .pnp/
 .pnp.js
+test.txt
 
 # Environment variables
 .env
