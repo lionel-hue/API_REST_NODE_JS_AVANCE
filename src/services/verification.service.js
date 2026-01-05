@@ -10,8 +10,8 @@ class VerificationService {
    * Generate a secure random token
    * @returns {string} Random token
    */
-  generateToken(***REMOVED*** {
-    return crypto.randomBytes(32***REMOVED***.toString('hex'***REMOVED***;
+  generateToken() {
+    return crypto.randomBytes(32).toString('hex');
   }
 
   /**
@@ -19,26 +19,26 @@ class VerificationService {
    * @param {Object} user - User object
    * @returns {Promise<Object>} Result with token
    */
-  async createAndSendVerification(user***REMOVED*** {
-    console.log(`\n🔵 [VERIFICATION] Starting email verification for: ${user.email}`***REMOVED***;
+  async createAndSendVerification(user) {
+    console.log(`\n🔵 [VERIFICATION] Starting email verification for: ${user.email}`);
     
     // Check if user is already verified
-    if (user.emailVerifiedAt***REMOVED*** {
-      console.log(`❌ [VERIFICATION] User ${user.email} is already verified at ${user.emailVerifiedAt}`***REMOVED***;
-      throw new BadRequestException('Email is already verified'***REMOVED***;
+    if (user.emailVerifiedAt) {
+      console.log(`❌ [VERIFICATION] User ${user.email} is already verified at ${user.emailVerifiedAt}`);
+      throw new BadRequestException('Email is already verified');
     }
 
     // Generate verification token
-    const token = this.generateToken(***REMOVED***;
-    const expiresAt = new Date(Date.now(***REMOVED*** + 24 * 60 * 60 * 1000***REMOVED***; // 24 hours
+    const token = this.generateToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    console.log(`✅ [VERIFICATION] Generated token: ${token}`***REMOVED***;
-    console.log(`✅ [VERIFICATION] Expires at: ${expiresAt}`***REMOVED***;
+    console.log(`✅ [VERIFICATION] Generated token: ${token}`);
+    console.log(`✅ [VERIFICATION] Expires at: ${expiresAt}`);
 
     // Delete any existing verification tokens for this user
     await prisma.verificationToken.deleteMany({
       where: { userId: user.id },
-    }***REMOVED***;
+    });
 
     // Create new verification token
     await prisma.verificationToken.create({
@@ -47,25 +47,25 @@ class VerificationService {
         userId: user.id,
         expiresAt,
       },
-    }***REMOVED***;
+    });
 
-    console.log(`✅ [VERIFICATION] Token saved to database`***REMOVED***;
+    console.log(`✅ [VERIFICATION] Token saved to database`);
 
     // Send verification email
-    console.log(`🔵 [VERIFICATION] Sending verification email...`***REMOVED***;
+    console.log(`🔵 [VERIFICATION] Sending verification email...`);
     const emailSent = await emailService.sendVerificationEmail(
       user.email,
       token,
       user.firstName
-    ***REMOVED***;
+    );
 
-    console.log(`✅ [VERIFICATION] Email sending result: ${emailSent ? 'SUCCESS' : 'FAILED'}`***REMOVED***;
+    console.log(`✅ [VERIFICATION] Email sending result: ${emailSent ? 'SUCCESS' : 'FAILED'}`);
 
-    if (!emailSent && config.NODE_ENV === 'production'***REMOVED*** {
-      logger.warn(`Failed to send verification email to ${user.email}`***REMOVED***;
+    if (!emailSent && config.NODE_ENV === 'production') {
+      logger.warn(`Failed to send verification email to ${user.email}`);
     }
 
-    logger.info(`Verification token created for user: ${user.id}`***REMOVED***;
+    logger.info(`Verification token created for user: ${user.id}`);
 
     return {
       success: true,
@@ -79,64 +79,64 @@ class VerificationService {
    * @param {string} token - Verification token
    * @returns {Promise<Object>} Result with message
    */
-  async verifyEmail(token***REMOVED*** {
-    console.log(`\n🔵 [VERIFICATION] Verifying token: ${token}`***REMOVED***;
+  async verifyEmail(token) {
+    console.log(`\n🔵 [VERIFICATION] Verifying token: ${token}`);
     
     // Find the verification token
     const verificationToken = await prisma.verificationToken.findUnique({
       where: { token },
       include: { user: true },
-    }***REMOVED***;
+    });
 
-    if (!verificationToken***REMOVED*** {
-      console.log(`❌ [VERIFICATION] Token not found in database`***REMOVED***;
+    if (!verificationToken) {
+      console.log(`❌ [VERIFICATION] Token not found in database`);
       
       // Debug: List all tokens to help debugging
       const allTokens = await prisma.verificationToken.findMany({
         select: { token: true, userId: true },
-      }***REMOVED***;
-      console.log(`🔍 [VERIFICATION] Available tokens: ${allTokens.length}`***REMOVED***;
+      });
+      console.log(`🔍 [VERIFICATION] Available tokens: ${allTokens.length}`);
       
-      throw new BadRequestException('Invalid verification token'***REMOVED***;
+      throw new BadRequestException('Invalid verification token');
     }
 
-    console.log(`✅ [VERIFICATION] Token found for user: ${verificationToken.user.email}`***REMOVED***;
+    console.log(`✅ [VERIFICATION] Token found for user: ${verificationToken.user.email}`);
 
     // Check if token is expired
-    if (new Date(***REMOVED*** > verificationToken.expiresAt***REMOVED*** {
-      console.log(`❌ [VERIFICATION] Token expired at ${verificationToken.expiresAt}`***REMOVED***;
+    if (new Date() > verificationToken.expiresAt) {
+      console.log(`❌ [VERIFICATION] Token expired at ${verificationToken.expiresAt}`);
       // Clean up expired token
       await prisma.verificationToken.delete({
         where: { id: verificationToken.id },
-      }***REMOVED***;
-      throw new BadRequestException('Verification token has expired'***REMOVED***;
+      });
+      throw new BadRequestException('Verification token has expired');
     }
 
     // Check if user is already verified
-    if (verificationToken.user.emailVerifiedAt***REMOVED*** {
-      console.log(`❌ [VERIFICATION] User already verified at ${verificationToken.user.emailVerifiedAt}`***REMOVED***;
+    if (verificationToken.user.emailVerifiedAt) {
+      console.log(`❌ [VERIFICATION] User already verified at ${verificationToken.user.emailVerifiedAt}`);
       // Clean up token
       await prisma.verificationToken.delete({
         where: { id: verificationToken.id },
-      }***REMOVED***;
-      throw new BadRequestException('Email is already verified'***REMOVED***;
+      });
+      throw new BadRequestException('Email is already verified');
     }
 
     // Update user's email verification status
     await prisma.user.update({
       where: { id: verificationToken.user.id },
-      data: { emailVerifiedAt: new Date(***REMOVED*** },
-    }***REMOVED***;
+      data: { emailVerifiedAt: new Date() },
+    });
 
     // Delete the used token
     await prisma.verificationToken.delete({
       where: { id: verificationToken.id },
-    }***REMOVED***;
+    });
 
-    console.log(`✅ [VERIFICATION] Email verified for: ${verificationToken.user.email}`***REMOVED***;
-    console.log(`✅ [VERIFICATION] Token deleted from database`***REMOVED***;
+    console.log(`✅ [VERIFICATION] Email verified for: ${verificationToken.user.email}`);
+    console.log(`✅ [VERIFICATION] Token deleted from database`);
 
-    logger.info(`Email verified for user: ${verificationToken.user.id}`***REMOVED***;
+    logger.info(`Email verified for user: ${verificationToken.user.id}`);
 
     return {
       success: true,
@@ -144,7 +144,7 @@ class VerificationService {
       user: {
         id: verificationToken.user.id,
         email: verificationToken.user.email,
-        emailVerifiedAt: new Date(***REMOVED***,
+        emailVerifiedAt: new Date(),
       },
     };
   }
@@ -154,8 +154,8 @@ class VerificationService {
    * @param {string} email - User's email
    * @returns {Promise<Object>} Result with message
    */
-  async resendVerification(email***REMOVED*** {
-    console.log(`\n🔵 [VERIFICATION] Resending verification for: ${email}`***REMOVED***;
+  async resendVerification(email) {
+    console.log(`\n🔵 [VERIFICATION] Resending verification for: ${email}`);
     
     // Find user by email
     const user = await prisma.user.findUnique({
@@ -167,11 +167,11 @@ class VerificationService {
         lastName: true,
         emailVerifiedAt: true,
       },
-    }***REMOVED***;
+    });
 
-    if (!user***REMOVED*** {
-      console.log(`❌ [VERIFICATION] User not found: ${email}`***REMOVED***;
-      // Don't reveal if user exists (security best practice***REMOVED***
+    if (!user) {
+      console.log(`❌ [VERIFICATION] User not found: ${email}`);
+      // Don't reveal if user exists (security best practice)
       return {
         success: true,
         message: 'If an account exists with this email, you will receive verification instructions.',
@@ -179,8 +179,8 @@ class VerificationService {
     }
 
     // Create and send verification
-    console.log(`✅ [VERIFICATION] User found: ${user.email}`***REMOVED***;
-    const result = await this.createAndSendVerification(user***REMOVED***;
+    console.log(`✅ [VERIFICATION] User found: ${user.email}`);
+    const result = await this.createAndSendVerification(user);
 
     return {
       ...result,
@@ -193,9 +193,9 @@ class VerificationService {
    * @param {Object} user - User object
    * @returns {boolean} Whether verification is needed
    */
-  needsVerification(user***REMOVED*** {
+  needsVerification(user) {
     return !user.emailVerifiedAt;
   }
 }
 
-export default new VerificationService(***REMOVED***;
+export default new VerificationService();

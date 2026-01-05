@@ -7,7 +7,7 @@ import {
   handleGitHubCallback,
 } from "#controllers/oauth.controller";
 
-const router = express.Router(***REMOVED***;
+const router = express.Router();
 
 /**
  * GET /api/oauth/google
@@ -19,9 +19,9 @@ router.get(
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false  // ← ADD THIS LINE
-  }***REMOVED***,
+  }),
   initiateGoogleOAuth
-***REMOVED***;
+);
 
 /**
  * GET /api/oauth/google/callback
@@ -33,9 +33,9 @@ router.get(
   passport.authenticate("google", {
     failureRedirect: "/login?error=google_auth_failed",
     session: false  // ← ADD THIS LINE
-  }***REMOVED***,
+  }),
   handleGoogleCallback
-***REMOVED***;
+);
 
 /**
  * GET /api/oauth/github
@@ -47,9 +47,9 @@ router.get(
   passport.authenticate("github", {
     scope: ["user:email"],
     session: false  // ← ADD THIS LINE
-  }***REMOVED***,
+  }),
   initiateGitHubOAuth
-***REMOVED***;
+);
 
 /**
  * GET /api/oauth/github/callback
@@ -61,8 +61,8 @@ router.get(
   passport.authenticate("github", {
     failureRedirect: "/login?error=github_auth_failed",
     session: false  // ← ADD THIS LINE
-  }***REMOVED***,
+  }),
   handleGitHubCallback
-***REMOVED***;
+);
 
 export default router;

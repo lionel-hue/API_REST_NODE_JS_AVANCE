@@ -4,15 +4,15 @@ import { asyncHandler } from '#lib/async-handler';
 import prisma from '#lib/prisma';
 import { config } from '#config/env';
 
-const router = Router(***REMOVED***;
+const router = Router();
 
 // Email verification routes
-router.get('/verify-email', asyncHandler(EmailController.verifyEmail***REMOVED******REMOVED***;
-router.post('/verify-email', asyncHandler(EmailController.verifyEmail***REMOVED******REMOVED***;
-router.post('/resend-verification', asyncHandler(EmailController.resendVerification***REMOVED******REMOVED***;
+router.get('/verify-email', asyncHandler(EmailController.verifyEmail));
+router.post('/verify-email', asyncHandler(EmailController.verifyEmail));
+router.post('/resend-verification', asyncHandler(EmailController.resendVerification));
 
 // Debug route - GET /api/auth/debug/verification-tokens
-router.get('/debug/verification-tokens', async (req, res***REMOVED*** => {
+router.get('/debug/verification-tokens', async (req, res) => {
   try {
     const tokens = await prisma.verificationToken.findMany({
       include: {
@@ -23,7 +23,7 @@ router.get('/debug/verification-tokens', async (req, res***REMOVED*** => {
           },
         },
       },
-    }***REMOVED***;
+    });
 
     const users = await prisma.user.findMany({
       select: {
@@ -32,7 +32,7 @@ router.get('/debug/verification-tokens', async (req, res***REMOVED*** => {
         emailVerifiedAt: true,
         createdAt: true,
       },
-    }***REMOVED***;
+    });
 
     res.json({
       success: true,
@@ -45,45 +45,45 @@ router.get('/debug/verification-tokens', async (req, res***REMOVED*** => {
           userEmail: t.user.email,
           expiresAt: t.expiresAt,
           createdAt: t.createdAt,
-        }***REMOVED******REMOVED***,
+        })),
       },
       users: users.map(u => ({
         id: u.id,
         email: u.email,
         emailVerifiedAt: u.emailVerifiedAt,
         createdAt: u.createdAt,
-      }***REMOVED******REMOVED***,
-    }***REMOVED***;
-  } catch (error***REMOVED*** {
-    res.status(500***REMOVED***.json({
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
       error: error.message,
-    }***REMOVED***;
+    });
   }
-}***REMOVED***;
+});
 
 // Get verification token for a specific email - GET /api/auth/get-token/:email
-router.get('/get-token/:email', async (req, res***REMOVED*** => {
+router.get('/get-token/:email', async (req, res) => {
   try {
     const { email } = req.params;
     
-    console.log(`🔍 [DEBUG] Getting token for: ${email}`***REMOVED***;
+    console.log(`🔍 [DEBUG] Getting token for: ${email}`);
     
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, emailVerifiedAt: true, firstName: true },
-    }***REMOVED***;
+    });
     
-    if (!user***REMOVED*** {
-      return res.status(404***REMOVED***.json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
         error: 'User not found',
-      }***REMOVED***;
+      });
     }
     
     const verificationToken = await prisma.verificationToken.findFirst({
       where: { userId: user.id },
-    }***REMOVED***;
+    });
     
     const response = {
       success: true,
@@ -95,12 +95,12 @@ router.get('/get-token/:email', async (req, res***REMOVED*** => {
       },
     };
     
-    if (verificationToken***REMOVED*** {
+    if (verificationToken) {
       response.verificationToken = {
         exists: true,
         token: verificationToken.token,
         expiresAt: verificationToken.expiresAt,
-        expiresIn: Math.round((verificationToken.expiresAt - new Date(***REMOVED******REMOVED*** / (1000 * 60 * 60***REMOVED******REMOVED*** + ' hours',
+        expiresIn: Math.round((verificationToken.expiresAt - new Date()) / (1000 * 60 * 60)) + ' hours',
         verifyUrl: `${config.APP_URL}/api/auth/verify-email?token=${verificationToken.token}`,
         curlCommand: `curl -X POST ${config.APP_URL}/api/auth/verify-email -H "Content-Type: application/json" -d '{"token": "${verificationToken.token}"}'`,
       };
@@ -113,55 +113,55 @@ router.get('/get-token/:email', async (req, res***REMOVED*** => {
       };
     }
     
-    res.json(response***REMOVED***;
+    res.json(response);
     
-  } catch (error***REMOVED*** {
-    res.status(500***REMOVED***.json({
+  } catch (error) {
+    res.status(500).json({
       success: false,
       error: error.message,
-    }***REMOVED***;
+    });
   }
-}***REMOVED***;
+});
 
 // Manual verification test endpoint - POST /api/auth/test-verify
-router.post('/test-verify', async (req, res***REMOVED*** => {
+router.post('/test-verify', async (req, res) => {
   try {
     const { email } = req.body;
     
-    if (!email***REMOVED*** {
-      return res.status(400***REMOVED***.json({
+    if (!email) {
+      return res.status(400).json({
         success: false,
         error: 'Email is required',
-      }***REMOVED***;
+      });
     }
     
-    console.log(`🔍 [TEST] Testing verification for: ${email}`***REMOVED***;
+    console.log(`🔍 [TEST] Testing verification for: ${email}`);
     
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, firstName: true, emailVerifiedAt: true },
-    }***REMOVED***;
+    });
     
-    if (!user***REMOVED*** {
+    if (!user) {
       return res.json({
         success: false,
         error: 'User not found',
-      }***REMOVED***;
+      });
     }
     
     // Check if already verified
-    if (user.emailVerifiedAt***REMOVED*** {
+    if (user.emailVerifiedAt) {
       return res.json({
         success: false,
         error: 'User already verified',
         verifiedAt: user.emailVerifiedAt,
-      }***REMOVED***;
+      });
     }
     
     // Create verification token
-    const verificationService = await import('#services/verification.service.js'***REMOVED***;
-    const result = await verificationService.default.createAndSendVerification(user***REMOVED***;
+    const verificationService = await import('#services/verification.service.js');
+    const result = await verificationService.default.createAndSendVerification(user);
     
     res.json({
       success: true,
@@ -171,14 +171,14 @@ router.post('/test-verify', async (req, res***REMOVED*** => {
         firstName: user.firstName,
       },
       verification: result,
-    }***REMOVED***;
+    });
     
-  } catch (error***REMOVED*** {
-    res.status(500***REMOVED***.json({
+  } catch (error) {
+    res.status(500).json({
       success: false,
       error: error.message,
-    }***REMOVED***;
+    });
   }
-}***REMOVED***;
+});
 
 export default router;

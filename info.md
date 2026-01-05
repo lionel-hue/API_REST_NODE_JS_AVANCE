@@ -3,7 +3,7 @@
 ## 👥 **Membre 1 : Système d'Authentification de Base & JWT**
 **Responsabilités principales :**
 - Implémenter l'inscription et connexion basiques
-- Gestion complète des tokens JWT (access + refresh***REMOVED***
+- Gestion complète des tokens JWT (access + refresh)
 - Middleware d'authentification pour protéger les routes
 - Système de déconnexion et blacklist des tokens
 
@@ -12,9 +12,9 @@
 src/controllers/auth.controller.js
 src/services/auth.service.js
 src/schemas/auth.schema.js
-src/middlewares/auth.js (extension***REMOVED***
-src/lib/jwt.js (amélioration***REMOVED***
-src/routes/auth.routes.js (complétion***REMOVED***
+src/middlewares/auth.js (extension)
+src/lib/jwt.js (amélioration)
+src/routes/auth.routes.js (complétion)
 ```
 
 **Étapes immédiates :**
@@ -27,10 +27,10 @@ src/routes/auth.routes.js (complétion***REMOVED***
 
 ## 👥 **Membre 2 : Système Email & Gestion des Mots de Passe**
 **Responsabilités principales :**
-- Vérification d'email (envoi + validation***REMOVED***
+- Vérification d'email (envoi + validation)
 - Réinitialisation de mot de passe oublié
 - Changement de mot de passe pour utilisateur connecté
-- Service d'envoi d'emails (mocké ou réel***REMOVED***
+- Service d'envoi d'emails (mocké ou réel)
 
 **Fichiers à créer/modifier :**
 ```
@@ -50,7 +50,7 @@ src/routes/password.routes.js
 
 ---
 
-## 👥 **Membre 3 : Intégration OAuth (Google/GitHub***REMOVED*****
+## 👥 **Membre 3 : Intégration OAuth (Google/GitHub)**
 **Responsabilités principales :**
 - Configuration OAuth avec Google et GitHub
 - Gestion des callbacks et création de compte OAuth
@@ -76,7 +76,7 @@ src/middlewares/oauth.js
 
 ## 👥 **Membre 4 : 2FA & Fonctionnalités de Sécurité**
 **Responsabilités principales :**
-- Authentification à deux facteurs (TOTP***REMOVED***
+- Authentification à deux facteurs (TOTP)
 - Rate limiting contre les attaques brute-force
 - Historique des connexions
 - Gestion des sessions actives
@@ -101,17 +101,17 @@ src/services/session.service.js
 ## 👥 **Membre 5 : Gestion de Profil & Coordination**
 **Responsabilités principales :**
 - CRUD du profil utilisateur
-- Suppression de compte (soft delete***REMOVED***
-- Documentation et collection API (Yaak/Postman***REMOVED***
+- Suppression de compte (soft delete)
+- Documentation et collection API (Yaak/Postman)
 - Tests et validation globale
 
 **Fichiers à créer/modifier :**
 ```
 src/controllers/profile.controller.js
 src/services/profile.service.js
-README.md (complet***REMOVED***
-docs/ (dossier de documentation***REMOVED***
-tests/ (dossier de tests***REMOVED***
+README.md (complet)
+docs/ (dossier de documentation)
+tests/ (dossier de tests)
 ```
 
 **Étapes immédiates :**

@@ -10,7 +10,7 @@ import { logger } from "#lib/logger";
  * @returns {Promise<Object>} Utilisateur avec ses données
  * @throws {Error} Si erreur lors de la création/liaison du compte
  */
-export async function findOrCreateOAuthUser(oauthData***REMOVED*** {
+export async function findOrCreateOAuthUser(oauthData) {
   const { provider, id: providerId, profile } = oauthData;
 
   try {
@@ -18,56 +18,56 @@ export async function findOrCreateOAuthUser(oauthData***REMOVED*** {
     let oauthAccount = await prisma.oAuthAccount.findFirst({
       where: {
         provider,
-        providerId: String(providerId***REMOVED***,
+        providerId: String(providerId),
       },
       include: {
         user: true,
       },
-    }***REMOVED***;
+    });
 
     // Si le compte OAuth existe, retourner l'utilisateur associé
-    if (oauthAccount***REMOVED*** {
-      logger.info(`OAuth account found for ${provider}:${providerId}`***REMOVED***;
+    if (oauthAccount) {
+      logger.info(`OAuth account found for ${provider}:${providerId}`);
       return oauthAccount.user;
     }
 
     // Sinon, créer un nouvel utilisateur et lier le compte OAuth
-    logger.info(`Creating new user for OAuth ${provider}:${providerId}`***REMOVED***;
+    logger.info(`Creating new user for OAuth ${provider}:${providerId}`);
 
     // Extraire les données du profil selon le provider
     let userData = {};
-    if (provider === "google"***REMOVED*** {
+    if (provider === "google") {
       userData = {
         email: profile.emails?.[0]?.value || `${providerId}@google.oauth`,
         firstName: profile.name?.givenName || "Google",
         lastName: profile.name?.familyName || "User",
       };
-    } else if (provider === "github"***REMOVED*** {
+    } else if (provider === "github") {
       userData = {
         email: profile.emails?.[0]?.value || `${providerId}@github.oauth`,
-        firstName: profile.displayName?.split(" "***REMOVED***[0] || "GitHub",
-        lastName: profile.displayName?.split(" "***REMOVED***[1] || "User",
+        firstName: profile.displayName?.split(" ")[0] || "GitHub",
+        lastName: profile.displayName?.split(" ")[1] || "User",
       };
     }
 
     // Vérifier si un utilisateur existe déjà avec cet email
     let user = await prisma.user.findUnique({
       where: { email: userData.email },
-    }***REMOVED***;
+    });
 
     // Si l'utilisateur existe déjà, créer le compte OAuth pour le lier
-    if (user***REMOVED*** {
-      logger.info(`User already exists with email ${userData.email}, linking OAuth account`***REMOVED***;
+    if (user) {
+      logger.info(`User already exists with email ${userData.email}, linking OAuth account`);
       oauthAccount = await prisma.oAuthAccount.create({
         data: {
           provider,
-          providerId: String(providerId***REMOVED***,
+          providerId: String(providerId),
           userId: user.id,
         },
         include: {
           user: true,
         },
-      }***REMOVED***;
+      });
       return oauthAccount.user;
     }
 
@@ -78,60 +78,60 @@ export async function findOrCreateOAuthUser(oauthData***REMOVED*** {
         oauthAccounts: {
           create: {
             provider,
-            providerId: String(providerId***REMOVED***,
+            providerId: String(providerId),
           },
         },
       },
       include: {
         oauthAccounts: true,
       },
-    }***REMOVED***;
+    });
 
-    logger.info(`New user created with OAuth ${provider}:${providerId}`***REMOVED***;
+    logger.info(`New user created with OAuth ${provider}:${providerId}`);
     return user;
-  } catch (error***REMOVED*** {
-    logger.error(`Error in findOrCreateOAuthUser: ${error.message}`***REMOVED***;
+  } catch (error) {
+    logger.error(`Error in findOrCreateOAuthUser: ${error.message}`);
     throw error;
   }
 }
 
 /**
- * Lie un compte OAuth à un utilisateur existant (si pas déjà lié***REMOVED***
+ * Lie un compte OAuth à un utilisateur existant (si pas déjà lié)
  * @param {string} userId - ID de l'utilisateur
  * @param {string} provider - "google" ou "github"
  * @param {string} providerId - ID du profil OAuth
  * @returns {Promise<Object>} L'enregistrement OAuthAccount créé ou existant
  */
-export async function linkOAuthAccount(userId, provider, providerId***REMOVED*** {
+export async function linkOAuthAccount(userId, provider, providerId) {
   try {
     // Vérifier si le compte OAuth est déjà lié
     let oauthAccount = await prisma.oAuthAccount.findFirst({
       where: {
         provider,
-        providerId: String(providerId***REMOVED***,
+        providerId: String(providerId),
       },
-    }***REMOVED***;
+    });
 
-    if (oauthAccount***REMOVED*** {
+    if (oauthAccount) {
       logger.warn(
         `OAuth account ${provider}:${providerId} already linked to another user`
-      ***REMOVED***;
-      throw new Error("Ce compte OAuth est déjà lié à un autre utilisateur"***REMOVED***;
+      );
+      throw new Error("Ce compte OAuth est déjà lié à un autre utilisateur");
     }
 
     // Créer le lien
     oauthAccount = await prisma.oAuthAccount.create({
       data: {
         provider,
-        providerId: String(providerId***REMOVED***,
+        providerId: String(providerId),
         userId,
       },
-    }***REMOVED***;
+    });
 
-    logger.info(`OAuth account linked: ${provider}:${providerId} -> user ${userId}`***REMOVED***;
+    logger.info(`OAuth account linked: ${provider}:${providerId} -> user ${userId}`);
     return oauthAccount;
-  } catch (error***REMOVED*** {
-    logger.error(`Error in linkOAuthAccount: ${error.message}`***REMOVED***;
+  } catch (error) {
+    logger.error(`Error in linkOAuthAccount: ${error.message}`);
     throw error;
   }
 }
@@ -141,13 +141,13 @@ export async function linkOAuthAccount(userId, provider, providerId***REMOVED***
  * @param {string} userId - ID de l'utilisateur
  * @returns {Promise<Array>} Liste des comptes OAuth
  */
-export async function getUserOAuthAccounts(userId***REMOVED*** {
+export async function getUserOAuthAccounts(userId) {
   try {
     return await prisma.oAuthAccount.findMany({
       where: { userId },
-    }***REMOVED***;
-  } catch (error***REMOVED*** {
-    logger.error(`Error in getUserOAuthAccounts: ${error.message}`***REMOVED***;
+    });
+  } catch (error) {
+    logger.error(`Error in getUserOAuthAccounts: ${error.message}`);
     throw error;
   }
 }
@@ -158,19 +158,19 @@ export async function getUserOAuthAccounts(userId***REMOVED*** {
  * @param {string} provider - "google" ou "github"
  * @returns {Promise<Object>} L'enregistrement supprimé
  */
-export async function unlinkOAuthAccount(userId, provider***REMOVED*** {
+export async function unlinkOAuthAccount(userId, provider) {
   try {
     const deleted = await prisma.oAuthAccount.deleteMany({
       where: {
         userId,
         provider,
       },
-    }***REMOVED***;
+    });
 
-    logger.info(`OAuth account unlinked: ${provider} from user ${userId}`***REMOVED***;
+    logger.info(`OAuth account unlinked: ${provider} from user ${userId}`);
     return deleted;
-  } catch (error***REMOVED*** {
-    logger.error(`Error in unlinkOAuthAccount: ${error.message}`***REMOVED***;
+  } catch (error) {
+    logger.error(`Error in unlinkOAuthAccount: ${error.message}`);
     throw error;
   }
 }

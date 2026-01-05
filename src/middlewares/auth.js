@@ -14,45 +14,45 @@ import prisma from "#lib/prisma";
  * - Vérification de l'existence et du statut de l'utilisateur
  * - Ajout des informations utilisateur à req.user
  */
-export async function auth(req, res, next***REMOVED*** {
+export async function auth(req, res, next) {
   try {
     // Extraire le token du header Authorization
     const bearerToken = req.headers["authorization"];
-    if (!bearerToken***REMOVED*** {
-      logger.warn("Tentative d'accès sans token d'authentification"***REMOVED***;
-      throw new UnauthorizedException("Token d'authentification manquant"***REMOVED***;
+    if (!bearerToken) {
+      logger.warn("Tentative d'accès sans token d'authentification");
+      throw new UnauthorizedException("Token d'authentification manquant");
     }
 
-    const tokenPart = bearerToken.split(" "***REMOVED***;
-    if (tokenPart[0] !== "Bearer" || !tokenPart[1]***REMOVED*** {
-      logger.warn("Format de token invalide"***REMOVED***;
-      throw new UnauthorizedException("Format de token invalide. Utilisez: Bearer <token>"***REMOVED***;
+    const tokenPart = bearerToken.split(" ");
+    if (tokenPart[0] !== "Bearer" || !tokenPart[1]) {
+      logger.warn("Format de token invalide");
+      throw new UnauthorizedException("Format de token invalide. Utilisez: Bearer <token>");
     }
 
     const token = tokenPart[1];
 
-    // Vérifier si le token est blacklisté (révoqué***REMOVED***
+    // Vérifier si le token est blacklisté (révoqué)
     const blacklistedToken = await prisma.blacklistedAccessToken.findUnique({
       where: { token },
-    }***REMOVED***;
+    });
 
-    if (blacklistedToken***REMOVED*** {
-      logger.warn(`Tentative d'utilisation d'un token révoqué pour l'utilisateur ${blacklistedToken.userId}`***REMOVED***;
-      throw new UnauthorizedException("Token révoqué"***REMOVED***;
+    if (blacklistedToken) {
+      logger.warn(`Tentative d'utilisation d'un token révoqué pour l'utilisateur ${blacklistedToken.userId}`);
+      throw new UnauthorizedException("Token révoqué");
     }
 
     // Vérifier et décoder le token JWT
     let payload;
     try {
-      payload = await verifyToken(token***REMOVED***;
-    } catch (error***REMOVED*** {
-      logger.warn("Token JWT invalide ou expiré"***REMOVED***;
-      throw new UnauthorizedException("Token invalide ou expiré"***REMOVED***;
+      payload = await verifyToken(token);
+    } catch (error) {
+      logger.warn("Token JWT invalide ou expiré");
+      throw new UnauthorizedException("Token invalide ou expiré");
     }
 
-    if (!payload.userId***REMOVED*** {
-      logger.warn("Token sans userId"***REMOVED***;
-      throw new UnauthorizedException("Token invalide"***REMOVED***;
+    if (!payload.userId) {
+      logger.warn("Token sans userId");
+      throw new UnauthorizedException("Token invalide");
     }
 
     // Vérifier que l'utilisateur existe et n'est pas désactivé
@@ -65,16 +65,16 @@ export async function auth(req, res, next***REMOVED*** {
         lastName: true,
         disabledAt: true,
       },
-    }***REMOVED***;
+    });
 
-    if (!user***REMOVED*** {
-      logger.warn(`Utilisateur ${payload.userId} non trouvé`***REMOVED***;
-      throw new UnauthorizedException("Utilisateur non trouvé"***REMOVED***;
+    if (!user) {
+      logger.warn(`Utilisateur ${payload.userId} non trouvé`);
+      throw new UnauthorizedException("Utilisateur non trouvé");
     }
 
-    if (user.disabledAt***REMOVED*** {
-      logger.warn(`Tentative d'accès avec un compte désactivé: ${user.email}`***REMOVED***;
-      throw new UnauthorizedException("Compte désactivé"***REMOVED***;
+    if (user.disabledAt) {
+      logger.warn(`Tentative d'accès avec un compte désactivé: ${user.email}`);
+      throw new UnauthorizedException("Compte désactivé");
     }
 
     // Ajouter les informations de l'utilisateur à la requête
@@ -86,15 +86,15 @@ export async function auth(req, res, next***REMOVED*** {
       lastName: user.lastName,
     };
 
-    logger.debug(`Authentification réussie pour l'utilisateur: ${user.email}`***REMOVED***;
-    next(***REMOVED***;
-  } catch (error***REMOVED*** {
+    logger.debug(`Authentification réussie pour l'utilisateur: ${user.email}`);
+    next();
+  } catch (error) {
     // Si c'est déjà une UnauthorizedException, la propager telle quelle
-    if (error instanceof UnauthorizedException***REMOVED*** {
+    if (error instanceof UnauthorizedException) {
       throw error;
     }
     // Pour toute autre erreur, la transformer en UnauthorizedException
-    logger.error("Erreur dans le middleware d'authentification:", error***REMOVED***;
-    throw new UnauthorizedException("Token invalide ou expiré"***REMOVED***;
+    logger.error("Erreur dans le middleware d'authentification:", error);
+    throw new UnauthorizedException("Token invalide ou expiré");
   }
 }

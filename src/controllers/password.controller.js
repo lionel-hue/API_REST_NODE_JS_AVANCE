@@ -5,116 +5,116 @@ import passwordService from '#services/password.service';
 import { z } from 'zod';
 
 const forgotPasswordSchema = z.object({
-  email: z.string(***REMOVED***.email('Valid email is required'***REMOVED***,
-}***REMOVED***;
+  email: z.string().email('Valid email is required'),
+});
 
 const resetPasswordSchema = z.object({
-  token: z.string(***REMOVED***.min(1, 'Reset token is required'***REMOVED***,
-  newPassword: z.string(***REMOVED***.min(8, 'Password must be at least 8 characters'***REMOVED***,
-}***REMOVED***;
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string(***REMOVED***.min(1, 'Current password is required'***REMOVED***,
-  newPassword: z.string(***REMOVED***.min(8, 'New password must be at least 8 characters'***REMOVED***,
-}***REMOVED***;
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
 
 const setPasswordSchema = z.object({
-  newPassword: z.string(***REMOVED***.min(8, 'Password must be at least 8 characters'***REMOVED***,
-}***REMOVED***;
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
 
 export class PasswordController {
   /**
-   * Request password reset (forgot password***REMOVED***
+   * Request password reset (forgot password)
    * POST /api/password/forgot
    */
-  static async forgotPassword(req, res***REMOVED*** {
-    const validatedData = validateData(forgotPasswordSchema, req.body***REMOVED***;
-    const result = await passwordService.forgotPassword(validatedData.email***REMOVED***;
+  static async forgotPassword(req, res) {
+    const validatedData = validateData(forgotPasswordSchema, req.body);
+    const result = await passwordService.forgotPassword(validatedData.email);
 
     res.json({
       success: true,
       ...result,
-    }***REMOVED***;
+    });
   }
 
   /**
    * Reset password with token
    * POST /api/password/reset
    */
-  static async resetPassword(req, res***REMOVED*** {
+  static async resetPassword(req, res) {
     // Support both query param and body
     const token = req.query.token || req.body.token;
     const newPassword = req.body.newPassword;
     
-    if (!token || !newPassword***REMOVED*** {
-      return res.status(400***REMOVED***.json({
+    if (!token || !newPassword) {
+      return res.status(400).json({
         success: false,
         error: 'Token and new password are required',
-      }***REMOVED***;
+      });
     }
 
-    const validatedData = validateData(resetPasswordSchema, { token, newPassword }***REMOVED***;
+    const validatedData = validateData(resetPasswordSchema, { token, newPassword });
     const result = await passwordService.resetPassword(
       validatedData.token,
       validatedData.newPassword
-    ***REMOVED***;
+    );
 
     res.json({
       success: true,
       ...result,
-    }***REMOVED***;
+    });
   }
 
   /**
    * Change password for authenticated user
    * PUT /api/password/change
    */
-  static async changePassword(req, res***REMOVED*** {
-    const validatedData = validateData(changePasswordSchema, req.body***REMOVED***;
+  static async changePassword(req, res) {
+    const validatedData = validateData(changePasswordSchema, req.body);
     const userId = req.user.userId || req.user.id;
 
-    if (!userId***REMOVED*** {
-      return res.status(401***REMOVED***.json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         error: 'Authentication required',
-      }***REMOVED***;
+      });
     }
 
     const result = await passwordService.changePassword(
       userId,
       validatedData.currentPassword,
       validatedData.newPassword
-    ***REMOVED***;
+    );
 
     res.json({
       success: true,
       ...result,
-    }***REMOVED***;
+    });
   }
 
   /**
    * Set password for OAuth user
    * POST /api/password/set
    */
-  static async setPassword(req, res***REMOVED*** {
-    const validatedData = validateData(setPasswordSchema, req.body***REMOVED***;
+  static async setPassword(req, res) {
+    const validatedData = validateData(setPasswordSchema, req.body);
     const userId = req.user.userId || req.user.id;
 
-    if (!userId***REMOVED*** {
-      return res.status(401***REMOVED***.json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         error: 'Authentication required',
-      }***REMOVED***;
+      });
     }
 
     const result = await passwordService.setPassword(
       userId,
       validatedData.newPassword
-    ***REMOVED***;
+    );
 
     res.json({
       success: true,
       ...result,
-    }***REMOVED***;
+    });
   }
 }

@@ -8,19 +8,19 @@ const GoogleOAuth2Strategy = GoogleStrategy.Strategy;
 const GitHubOAuth2Strategy = GitHubStrategy.Strategy;
 
 /**
- * Initialise les stratégies OAuth (Google et GitHub***REMOVED*** avec Passport
+ * Initialise les stratégies OAuth (Google et GitHub) avec Passport
  * Gère la sérialisation/désérialisation des utilisateurs
  */
-export function initializePassportStrategies(***REMOVED*** {
+export function initializePassportStrategies() {
   // Sérialisation: stocker l'ID utilisateur en session
-  passport.serializeUser((user, done***REMOVED*** => {
-    done(null, user.id***REMOVED***;
-  }***REMOVED***;
+  passport.serializeUser((user, done) => {
+    done(null, user.id);
+  });
 
-  // Désérialisation: récupérer l'utilisateur par son ID (optionnel, utilisé si sessions***REMOVED***
-  passport.deserializeUser((id, done***REMOVED*** => {
-    done(null, { id }***REMOVED***;
-  }***REMOVED***;
+  // Désérialisation: récupérer l'utilisateur par son ID (optionnel, utilisé si sessions)
+  passport.deserializeUser((id, done) => {
+    done(null, { id });
+  });
 
   // Stratégie Google OAuth2
   passport.use(
@@ -31,8 +31,8 @@ export function initializePassportStrategies(***REMOVED*** {
         callbackURL: `${config.APP_URL}/api/oauth/google/callback`,
         passReqToCallback: true,
       },
-      (req, accessToken, refreshToken, profile, done***REMOVED*** => {
-        logger.info(`Google OAuth callback received for profile: ${profile.id}`***REMOVED***;
+      (req, accessToken, refreshToken, profile, done) => {
+        logger.info(`Google OAuth callback received for profile: ${profile.id}`);
         
         // On retourne le profil OAuth pour traitement dans le contrôleur
         return done(null, {
@@ -41,10 +41,10 @@ export function initializePassportStrategies(***REMOVED*** {
           profile: profile,
           accessToken,
           refreshToken,
-        }***REMOVED***;
+        });
       }
-    ***REMOVED***
-  ***REMOVED***;
+    )
+  );
 
   // Stratégie GitHub OAuth2
   passport.use(
@@ -56,8 +56,8 @@ export function initializePassportStrategies(***REMOVED*** {
         passReqToCallback: true,
         scope : ["user.email"]
       },
-      (req, accessToken, refreshToken, profile, done***REMOVED*** => {
-        logger.info(`GitHub OAuth callback received for profile: ${profile.id}`***REMOVED***;
+      (req, accessToken, refreshToken, profile, done) => {
+        logger.info(`GitHub OAuth callback received for profile: ${profile.id}`);
         
         // On retourne le profil OAuth pour traitement dans le contrôleur
         return done(null, {
@@ -66,12 +66,12 @@ export function initializePassportStrategies(***REMOVED*** {
           profile: profile,
           accessToken,
           refreshToken,
-        }***REMOVED***;
+        });
       }
-    ***REMOVED***
-  ***REMOVED***;
+    )
+  );
 
-  logger.info("Passport strategies initialized (Google + GitHub***REMOVED***"***REMOVED***;
+  logger.info("Passport strategies initialized (Google + GitHub)");
 }
 
 /**

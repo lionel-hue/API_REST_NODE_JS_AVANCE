@@ -11,7 +11,7 @@ export const logger = pino({
         target: "pino-pretty",
         options: { colorize: true },
       },
-}***REMOVED***;
+});
 
-export const httpLogger = pinoHttp({ logger }***REMOVED***;
+export const httpLogger = pinoHttp({ logger });
 

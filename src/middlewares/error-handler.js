@@ -1,48 +1,48 @@
 import { HttpException } from "#lib/exceptions";
 import { logger } from "#lib/logger";
 
-export function errorHandler(err, req, res, next***REMOVED*** {
-  if (err instanceof HttpException***REMOVED*** {
-    logger.warn({ err, path: req.path }, err.message***REMOVED***;
+export function errorHandler(err, req, res, next) {
+  if (err instanceof HttpException) {
+    logger.warn({ err, path: req.path }, err.message);
   } else {
-    logger.error({ err, path: req.path }, "Unhandled error"***REMOVED***;
+    logger.error({ err, path: req.path }, "Unhandled error");
   }
 
-  if (err instanceof HttpException***REMOVED*** {
-    return res.status(err.statusCode***REMOVED***.json({
+  if (err instanceof HttpException) {
+    return res.status(err.statusCode).json({
       success: false,
       error: err.message,
-      ...(err.details && { details: err.details }***REMOVED***,
-    }***REMOVED***;
+      ...(err.details && { details: err.details }),
+    });
   }
 
-  if (err.code === "P2002"***REMOVED*** {
-    return res.status(409***REMOVED***.json({
+  if (err.code === "P2002") {
+    return res.status(409).json({
       success: false,
       error: "Resource already exists",
-    }***REMOVED***;
+    });
   }
 
-  if (err.code === "P2025"***REMOVED*** {
-    return res.status(404***REMOVED***.json({
+  if (err.code === "P2025") {
+    return res.status(404).json({
       success: false,
       error: "Resource not found",
-    }***REMOVED***;
+    });
   }
 
-  if (err instanceof SyntaxError && err.status === 400***REMOVED*** {
-    return res.status(400***REMOVED***.json({
+  if (err instanceof SyntaxError && err.status === 400) {
+    return res.status(400).json({
       success: false,
       error: "Invalid JSON",
-    }***REMOVED***;
+    });
   }
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  res.status(500***REMOVED***.json({
+  res.status(500).json({
     success: false,
     error: isProduction ? "Internal Server Error" : err.message,
-    ...(!isProduction && { stack: err.stack }***REMOVED***,
-  }***REMOVED***;
+    ...(!isProduction && { stack: err.stack }),
+  });
 }
 

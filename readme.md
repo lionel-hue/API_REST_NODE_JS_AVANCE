@@ -1,15 +1,113 @@
-# API d'Authentification - Node.js/Express
+# API d'Authentification Avancée - Node.js/Express
 
-## 📋 Description du Projet
-API REST complète d'authentification avec multiples méthodes d'authentification pour un projet universitaire.
+## 📋 Description
+API REST complète d'authentification avec multiples méthodes d'authentification pour un projet universitaire. Cette API implémente un système d'authentification moderne avec support de JWT, OAuth 2.0, 2FA, gestion des sessions et plus encore.
 
-## 🚀 Installation Rapide
+## 🚀 Fonctionnalités
+
+### ✅ Authentification Multi-méthodes
+- **Authentification classique** : Email/mot de passe avec tokens JWT
+- **OAuth 2.0** : Google et GitHub
+- **2FA (TOTP)** : Authentification à deux facteurs avec QR codes
+- **Refresh tokens** : Rotation sécurisée des tokens
+
+### ✅ Sécurité Renforcée
+- **Rate limiting** : Protection contre les attaques brute-force
+- **Validation Zod** : Validation type-safe des données
+- **Email verification** : Vérification obligatoire des emails
+- **Session management** : Gestion multi-appareils
+- **Password policies** : Réinitialisation sécurisée
+
+### ✅ Gestion Utilisateur Complète
+- Profil utilisateur (CRUD)
+- Suppression de compte (soft delete)
+- Historique des connexions
+- Gestion des sessions actives
+
+## 📁 Structure du Projet
+
+```
+API_REST_NODE_JS_AVANCE/
+├── src/
+│   ├── config/           # Configuration d'environnement
+│   │   └── env.js       # Variables d'environnement
+│   ├── controllers/      # Contrôleurs Express (8 fichiers)
+│   │   ├── auth.controller.js
+│   │   ├── email.controller.js
+│   │   ├── oauth.controller.js
+│   │   ├── password.controller.js
+│   │   ├── profile.controller.js
+│   │   ├── session.controller.js
+│   │   ├── two-factor.controller.js
+│   │   └── user.controller.js
+│   ├── dto/             # Data Transfer Objects
+│   │   └── user.dto.js
+│   ├── lib/             # Bibliothèques et utilitaires (9 fichiers)
+│   │   ├── async-handler.js
+│   │   ├── exceptions.js
+│   │   ├── jwt.js
+│   │   ├── logger.js
+│   │   ├── oauth.js
+│   │   ├── password.js
+│   │   ├── prisma.js
+│   │   ├── two-factor.js
+│   │   └── validate.js
+│   ├── middlewares/     # Middlewares Express (4 fichiers)
+│   │   ├── auth.js
+│   │   ├── error-handler.js
+│   │   ├── not-found.js
+│   │   └── rate-limit.js
+│   ├── routes/          # Routes API (8 fichiers)
+│   │   ├── auth.routes.js
+│   │   ├── email.routes.js
+│   │   ├── oauth.routes.js
+│   │   ├── password.routes.js
+│   │   ├── profile.routes.js
+│   │   ├── session.routes.js
+│   │   ├── two-factor.routes.js
+│   │   └── user.routes.js
+│   ├── schemas/         # Schémas de validation Zod (3 fichiers)
+│   │   ├── auth.schema.js
+│   │   ├── email-password.schema.js
+│   │   └── user.schema.js
+│   ├── services/        # Services métier (10 fichiers)
+│   │   ├── auth.service.js
+│   │   ├── email.service.js
+│   │   ├── login-history.js
+│   │   ├── oauth.service.js
+│   │   ├── password.service.js
+│   │   ├── profile.service.js
+│   │   ├── session.service.js
+│   │   ├── user.service.js
+│   │   └── verification.service.js
+│   └── index.js         # Point d'entrée de l'application
+├── prisma/
+│   └── schema.prisma    # Modèles de données Prisma
+├── docs/
+│   └── API.md          # Documentation complète de l'API
+├── .env.example        # Template de variables d'environnement
+├── package.json        # Dépendances et scripts
+└── README.md           # Ce fichier
+```
+
+## 🛠️ Technologies Utilisées
+
+- **Runtime** : Node.js v22+
+- **Framework** : Express.js 5.x
+- **Base de données** : SQLite avec Prisma ORM
+- **Authentification** : JOSE (JWT), Passport.js (OAuth)
+- **Validation** : Zod pour la validation type-safe
+- **Sécurité** : Argon2 pour le hachage, helmet, rate limiting
+- **Logging** : Pino pour les logs structurés
+- **Email** : Nodemailer avec support SMTP/Ethereal
+- **2FA** : Speakeasy (TOTP) avec QR codes
+
+## 🔧 Installation Rapide
 
 ### Prérequis
-- Node.js v22+
+- Node.js v22+ installé
 - npm ou pnpm
 - Git
-- [Yaak](https://yaak.app/***REMOVED*** pour tester l'API
 
 ### 1. Cloner le projet
 ```bash
@@ -19,316 +117,250 @@ cd API_REST_NODE_JS_AVANCE
 
 ### 2. Installer les dépendances
 ```bash
-
+npm install
 # ou avec pnpm
 pnpm install
 ```
 
 ### 3. Configuration de l'environnement
 ```bash
-# Copier le fichier d'exemple
+# Copier le template
 cp .env.example .env
 
-# Éditer le fichier .env avec vos configurations
+# Éditer avec vos configurations
 nano .env
 ```
 
-### 4. Configurer le schéma de base de données
-Dans `prisma/schema.prisma`, coller le schéma suivant :
-
-```prisma
-`generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL"***REMOVED***
-}
-
-model User {
-  id                  String               @id @default(uuid(***REMOVED******REMOVED***
-  email               String               @unique
-  password            String?
-  firstName           String
-  lastName            String
-  emailVerifiedAt     DateTime?
-  twoFactorSecret     String?
-  twoFactorEnabledAt  DateTime?
-  disabledAt          DateTime?
-  createdAt           DateTime             @default(now(***REMOVED******REMOVED***
-  updatedAt           DateTime             @updatedAt
-  
-  // Relations
-  oauthAccounts       OAuthAccount[]
-  refreshTokens       RefreshToken[]
-  blacklistedTokens   BlacklistedAccessToken[]
-  verificationTokens  VerificationToken[]
-  passwordResetTokens PasswordResetToken[]
-  loginHistories      LoginHistory[]
-
-  @@map("users"***REMOVED***
-}
-
-model OAuthAccount {
-  id         String   @id @default(uuid(***REMOVED******REMOVED***
-  provider   String
-  providerId String
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  createdAt  DateTime @default(now(***REMOVED******REMOVED***
-
-  @@unique([provider, providerId]***REMOVED***
-  @@map("oauth_accounts"***REMOVED***
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  userAgent String?
-  ipAddress String?
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
-
-  @@map("refresh_tokens"***REMOVED***
-}
-
-model BlacklistedAccessToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  expiresAt DateTime
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
-
-  @@map("blacklisted_access_tokens"***REMOVED***
-}
-
-model VerificationToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  expiresAt DateTime
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
-
-  @@map("verification_tokens"***REMOVED***
-}
-
-model PasswordResetToken {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  expiresAt DateTime
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
-
-  @@map("password_reset_tokens"***REMOVED***
-}
-
-model LoginHistory {
-  id        String   @id @default(uuid(***REMOVED******REMOVED***
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade***REMOVED***
-  ipAddress String?
-  userAgent String?
-  success   Boolean
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
-
-  @@map("login_histories"***REMOVED***
-}
-```
-
-### 5. Initialiser la base de données
+### 4. Configurer la base de données
 ```bash
 # Générer le client Prisma
 npm run db:generate
 
-# Créer/initialiser la base de données
+# Synchroniser le schéma avec la base de données
 npm run db:push
 
-# (Optionnel***REMOVED*** Ouvrir l'interface Prisma Studio
+# (Optionnel) Ouvrir l'interface Prisma Studio
 npm run db:studio
 ```
 
-### 6. Lancer le serveur
+### 5. Lancer le serveur
 ```bash
-# Mode développement (avec rechargement automatique***REMOVED***
+# Mode développement (avec rechargement automatique)
 npm run dev
 
 # Mode production
 npm start
 ```
 
-## 📁 Structure du Projet
-```
-API_REST_NODE_JS_AVANCE/
-├── prisma/              # Configuration de la base de données
-│   ├── schema.prisma    # Modèles de données (copier le schéma ci-dessus***REMOVED***
-│   └── dev.db           # Base de données SQLite (généré après db:push***REMOVED***
-├── src/
-│   ├── config/          # Configuration (variables d'environnement***REMOVED***
-│   ├── controllers/     # Gestionnaires de requêtes HTTP
-│   ├── dto/            # Objets de transfert de données
-│   ├── lib/            # Bibliothèques et utilitaires
-│   ├── middlewares/    # Middlewares Express
-│   ├── routes/         # Définitions des routes
-│   ├── schemas/        # Schémas de validation (Zod***REMOVED***
-│   ├── services/       # Logique métier
-│   └── index.js        # Point d'entrée de l'application
-├── .env.example        # Modèle de variables d'environnement
-├── .env               # Variables d'environnement (à créer***REMOVED***
-├── .gitignore         # Fichiers ignorés par Git
-├── package.json       # Dépendances et scripts
-└── README.md         # Ce fichier
-```
+## 📦 Scripts NPM
 
-## 🔧 Scripts Disponibles
 ```bash
-npm run dev      # Lance le serveur en mode développement
-npm start        # Lance le serveur en mode production
-pm run db:generate  # Génère le client Prisma
+npm run dev          # Lance le serveur en mode développement
+npm start            # Lance le serveur en mode production
+npm run db:generate  # Génère le client Prisma
 npm run db:push      # Synchronise la BDD avec le schéma
-npm run db:studio    # Ouvre Prisma Studio (interface web***REMOVED***
+npm run db:migrate   # Exécute les migrations
+npm run db:studio    # Ouvre Prisma Studio (interface web)
 ```
 
-## 🌐 Variables d'Environnement (.env***REMOVED***
+## 🔌 Points de Terminaison API
+
+### Authentification (`/api/auth`)
+- `POST /register` - Inscription d'un nouvel utilisateur
+- `POST /login` - Connexion avec email/mot de passe
+- `POST /logout` - Déconnexion (révocation des tokens)
+- `POST /refresh` - Rafraîchir les tokens JWT
+
+### Email (`/api/auth`)
+- `GET/POST /verify-email` - Vérifier l'email avec token
+- `POST /resend-verification` - Renvoyer l'email de vérification
+
+### Mots de passe (`/api/password`)
+- `POST /forgot` - Demander une réinitialisation
+- `GET/POST /reset` - Réinitialiser le mot de passe
+- `PUT /change` - Changer le mot de passe (authentifié)
+- `POST /set` - Définir un mot de passe (utilisateurs OAuth)
+
+### OAuth (`/api/oauth`)
+- `GET /google` - Connexion avec Google OAuth
+- `GET /google/callback` - Callback Google
+- `GET /github` - Connexion avec GitHub OAuth
+- `GET /github/callback` - Callback GitHub
+
+### Sessions (`/api/sessions`)
+- `GET /` - Lister les sessions actives
+- `DELETE /:sessionId` - Révoquer une session spécifique
+- `DELETE /others` - Révoquer toutes les autres sessions
+
+### 2FA (`/api/2fa`)
+- `GET /status` - Statut de l'authentification à deux facteurs
+- `POST /enable` - Activer la 2FA (génère QR code)
+- `POST /verify` - Vérifier et activer avec un token
+- `POST /disable` - Désactiver la 2FA
+
+### Profil (`/api/profile`)
+- `GET /` - Récupérer le profil utilisateur
+- `PUT /` - Mettre à jour le profil
+- `DELETE /` - Supprimer le compte (soft delete)
+
+## 🔐 Variables d'Environnement
+
+Créez un fichier `.env` à la racine :
+
 ```env
-# Server
+# Serveur
 PORT=3000
 NODE_ENV=development
 
-# Database
-DATABASE_URL="file:./pri`sma/dev.db"
+# Base de données
+DATABASE_URL="file:./dev.db"
 
-# JWT Tokens
-JWT_SECRET=votre_super_secret_jwt_32_caracteres_minimum_change_this
+# JWT
+JWT_SECRET=votre_super_secret_jwt_de_32_caracteres_minimum
 JWT_ACCESS_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 
-# OAuth (pour le membre 3***REMOVED***
+# OAuth (Google)
 GOOGLE_CLIENT_ID=votre_client_id_google
 GOOGLE_CLIENT_SECRET=votre_client_secret_google
+
+# OAuth (GitHub)
 GITHUB_CLIENT_ID=votre_client_id_github
 GITHUB_CLIENT_SECRET=votre_client_secret_github
 
-# Email (pour le membre 2 - Mailtrap pour développement***REMOVED***
+# URL de l'application (pour les callbacks OAuth)
+APP_URL=http://localhost:3000
+
+# Email (Mailtrap recommandé pour le développement)
 EMAIL_SMTP_HOST=smtp.mailtrap.io
 EMAIL_SMTP_PORT=2525
-EMAIL_USERNAME=votre_mailtrap_username
-EMAIL_PASSWORD=votre_mailtrap_password
-EMAIL_FROM=noreply@yourapp.com
-
-# App URL
-APP_URL=http://localhost:3000
+EMAIL_USERNAME=votre_username_mailtrap
+EMAIL_PASSWORD=votre_password_mailtrap
+EMAIL_FROM=noreply@authapi.com
+EMAIL_ENABLED=true
 ```
 
-## 📚 Base de Données
-Le projet utilise **SQLite** avec **Prisma ORM** :
-- **Schéma** : `prisma/schema.prisma` (copier le schéma ci-dessus***REMOVED***
-- **Client généré** : `node_modules/.prisma/client` (après `db:generate`***REMOVED***
-- **Fichier BDD** : `prisma/dev.db` (créé après `db:push`***REMOVED***
+## 📊 Modèles de Données (Prisma)
 
-**Modèles principaux :**
-- `User` : Utilisateurs
-- `OAuthAccount` : Comptes OAuth liés (Google/GitHub***REMOVED***
-- `RefreshToken` : Tokens de rafraîchissement et sessions
-- `BlacklistedAccessToken` : Tokens révoqués avant expiration
-- `VerificationToken` : Vérification d'email
-- `PasswordResetToken` : Réinitialisation de mot de passe
-- `LoginHistory` : Historique des connexions
+L'API utilise 7 modèles principaux :
 
-## 🛠️ Workflow de Développement
-
-### Pour chaque membre :
-1. **Créer une branche** pour votre fonctionnalité :
-```bash
-git checkout -b feat/votre-nom-fonctionnalite
-# Exemple : git checkout -b feat/karim-oauth
-```
-
-2. **Travailler sur votre partie** selon la division des tâches
-
-3. **Commiter régulièrement** :
-```bash
-git add .
-git commit -m "feat: ajout de l'authentification OAuth Google"
-```
-
-4. **Pousser votre branche** :
-```bash
-git push origin feat/votre-nom-fonctionnalite
-```
-
-5. **Créer une Pull Request** sur GitHub/GitLab
-
-### Règles de commit :
-- `feat:` pour les nouvelles fonctionnalités
-- `fix:` pour les corrections de bugs
-- `docs:` pour la documentation
-- `refactor:` pour le refactoring
-- `test:` pour les tests
-
-## 🔗 Points de Terminaison API (Endpoints***REMOVED***
-
-### Authentification de base
-- `POST /api/auth/register` - Inscription
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/logout` - Déconnexion
-- `POST /api/auth/refresh` - Rafraîchir token
-
-### Email
-- `POST /api/auth/verify-email` - Vérifier email
-- `POST /api/auth/resend-verification` - Renvoyer email de vérification
-
-### Mots de passe
-- `POST /api/password/forgot` - Mot de passe oublié
-- `POST /api/password/reset` - Réinitialiser mot de passe
-- `PUT /api/password/change` - Changer mot de passe
-
-### OAuth
-- `GET /api/oauth/google` - Connexion Google
-- `GET /api/oauth/google/callback` - Callback Google
-- `GET /api/oauth/github` - Connexion GitHub
-- `GET /api/oauth/github/callback` - Callback GitHub
-
-### 2FA
-- `POST /api/2fa/enable` - Activer 2FA
-- `POST /api/2fa/disable` - Désactiver 2FA
-- `POST /api/2fa/verify` - Vérifier code 2FA
-
-### Sessions
-- `GET /api/sessions` - Lister sessions actives
-- `DELETE /api/sessions/:id` - Révoquer une session
-- `DELETE /api/sessions/others` - Révoquer toutes les autres sessions
-
-### Profil
-- `GET /api/profile` - Consulter profil
-- `PUT /api/profile` - Modifier profil
-- `DELETE /api/profile` - Supprimer compte
+1. **User** : Utilisateurs avec informations de profil
+2. **OAuthAccount** : Comptes OAuth liés (Google/GitHub)
+3. **RefreshToken** : Tokens de rafraîchissement pour les sessions
+4. **BlacklistedAccessToken** : Tokens JWT révoqués avant expiration
+5. **VerificationToken** : Tokens pour la vérification d'email
+6. **PasswordResetToken** : Tokens pour la réinitialisation de mot de passe
+7. **LoginHistory** : Historique des tentatives de connexion
 
 ## 🧪 Tester l'API
-Utiliser **Yaak** ou **Postman** :
-1. Importer la collection dans le dossier `docs/`
-2. Configurer l'environnement avec `baseUrl = http://localhost:3000`
-3. Tester les endpoints dans l'ordre logique
 
-## 📞 Communication
-- **Discord/Slack** : Pour les discussions quotidiennes
-- **Réunions** : Tous les jours à 10h pour le point quotidien
-- **Code Review** : Revue obligatoire avant merge
+### Avec curl
+```bash
+# Tester l'endpoint racine
+curl http://localhost:3000
 
-## 🗓️ Dates Importantes
-- **10 Janvier** : Date de rendu finale
-- **Chaque vendredi** : Revue d'avancement
-- **3 Janvier** : Intégration complète de toutes les fonctionnalités
+# Inscription
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "Password123!",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
 
-## ❓ Besoin d'aide ?
-1. Consulter la documentation dans `docs/`
-2. Poser vos questions dans le canal dédié
-3. Contacter le responsable de votre section
+# Connexion
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "Password123!"
+  }'
+```
+
+### Avec Yaak/Postman
+Importez la collection depuis `docs/API.md` pour tester tous les endpoints.
+
+## 🐛 Dépannage
+
+### Problèmes courants
+
+1. **"Prisma client not generated"**
+   ```bash
+   npm run db:generate
+   ```
+
+2. **"Database not initialized"**
+   ```bash
+   npm run db:push
+   ```
+
+3. **"Invalid OAuth credentials"**
+   - Vérifiez vos IDs et secrets dans `.env`
+   - Assurez-vous que les URLs de callback sont correctement configurées
+
+4. **"Email not sending"**
+   - Vérifiez les credentials SMTP dans `.env`
+   - En développement, vérifiez les logs pour les URLs Ethereal
+
+### Logs
+Les logs détaillés sont disponibles en mode développement. Activez le mode debug si nécessaire :
+```bash
+NODE_ENV=development npm run dev
+```
+
+## 🔒 Bonnes Pratiques de Sécurité
+
+1. **Ne jamais commettre de secrets** dans le repository
+2. **Utiliser des secrets forts** (générez avec `openssl rand -hex 32`)
+3. **Activer le rate limiting** en production
+4. **Utiliser HTTPS** en production
+5. **Valider toutes les entrées utilisateur** avec Zod
+6. **Hacher les mots de passe** avec Argon2
+7. **Mettre à jour régulièrement** les dépendances
+
+## 📚 Documentation Complète
+
+- **Documentation API** : `docs/API.md` (endpoints détaillés)
+- **Schéma de base de données** : `prisma/schema.prisma`
+- **Guide d'installation** : Voir section "Installation Rapide" ci-dessus
+
+## 👥 Développement
+
+### Workflow Git
+```bash
+# Créer une branche pour votre fonctionnalité
+git checkout -b feat/nom-fonctionnalite
+
+# Commiter régulièrement
+git add .
+git commit -m "feat: description de la fonctionnalité"
+
+# Pousser vers GitHub
+git push origin feat/nom-fonctionnalite
+
+# Créer une Pull Request
+```
+
+### Conventions de code
+- **Controllers** : Gèrent les requêtes/réponses HTTP
+- **Services** : Contiennent la logique métier
+- **Routes** : Définissent les endpoints API
+- **Middlewares** : Gèrent les pré/post-traitements
+- **Schemas** : Validation des données avec Zod
+
+## 📄 Licence
+
+Projet universitaire - Usage éducatif
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créez une branche (`git checkout -b feature/AmazingFeature`)
+3. Commitez vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Poussez la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une Pull Request
 
 ---
+
+**Note importante** : Cette API est conçue pour un projet éducatif. En production, des audits de sécurité supplémentaires sont recommandés.

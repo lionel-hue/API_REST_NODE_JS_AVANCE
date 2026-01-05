@@ -8,7 +8,7 @@ export function validateData(schema, data) {
   const result = schema.safeParse(data)
 
   if (!result.success) {
-    throw new ValidationException(result.error.flatten(fieldErrors));
+    throw new ValidationException(result.error.flatten().fieldErrors);
   }
 
   return result.data;

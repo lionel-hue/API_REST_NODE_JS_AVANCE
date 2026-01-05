@@ -3,45 +3,45 @@ import { config } from '#config/env';
 import { logger } from '#lib/logger';
 
 class EmailService {
-  constructor(***REMOVED*** {
+  constructor() {
     this.transporter = null;
-    this.init(***REMOVED***;
+    this.init();
   }
 
-  init(***REMOVED*** {
+  init() {
     // Check if email is disabled
-    if (config.EMAIL_ENABLED === 'false' || config.EMAIL_ENABLED === false***REMOVED*** {
-      console.log('📧 [EMAIL] Email service is DISABLED'***REMOVED***;
+    if (config.EMAIL_ENABLED === 'false' || config.EMAIL_ENABLED === false) {
+      console.log('📧 [EMAIL] Email service is DISABLED');
       return;
     }
 
-    console.log(`📧 [EMAIL] Initializing email service in ${config.NODE_ENV} mode`***REMOVED***;
+    console.log(`📧 [EMAIL] Initializing email service in ${config.NODE_ENV} mode`);
 
-    // If no SMTP config provided, use Ethereal (fake SMTP for testing***REMOVED***
-    if (!config.EMAIL_SMTP_HOST || !config.EMAIL_USERNAME || !config.EMAIL_PASSWORD***REMOVED*** {
-      console.log('📧 [EMAIL] No SMTP credentials found. Using Ethereal test account...'***REMOVED***;
-      this.setupTestAccount(***REMOVED***;
+    // If no SMTP config provided, use Ethereal (fake SMTP for testing)
+    if (!config.EMAIL_SMTP_HOST || !config.EMAIL_USERNAME || !config.EMAIL_PASSWORD) {
+      console.log('📧 [EMAIL] No SMTP credentials found. Using Ethereal test account...');
+      this.setupTestAccount();
       return;
     }
 
     // Use real SMTP credentials
     this.transporter = nodemailer.createTransport({
       host: config.EMAIL_SMTP_HOST,
-      port: parseInt(config.EMAIL_SMTP_PORT***REMOVED***,
+      port: parseInt(config.EMAIL_SMTP_PORT),
       secure: config.EMAIL_SMTP_PORT === '465',
       auth: {
         user: config.EMAIL_USERNAME,
         pass: config.EMAIL_PASSWORD,
       },
-    }***REMOVED***;
+    });
 
-    console.log('📧 [EMAIL] Email service initialized with real SMTP'***REMOVED***;
+    console.log('📧 [EMAIL] Email service initialized with real SMTP');
   }
 
-  async setupTestAccount(***REMOVED*** {
+  async setupTestAccount() {
     try {
-      console.log('📧 [EMAIL] Creating Ethereal test account...'***REMOVED***;
-      const testAccount = await nodemailer.createTestAccount(***REMOVED***;
+      console.log('📧 [EMAIL] Creating Ethereal test account...');
+      const testAccount = await nodemailer.createTestAccount();
       
       this.transporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
@@ -51,16 +51,16 @@ class EmailService {
           user: testAccount.user,
           pass: testAccount.pass,
         },
-      }***REMOVED***;
+      });
       
-      console.log(`📧 [EMAIL] Ethereal account created:`***REMOVED***;
-      console.log(`📧 [EMAIL] Username: ${testAccount.user}`***REMOVED***;
-      console.log(`📧 [EMAIL] Password: ${testAccount.pass}`***REMOVED***;
-      console.log(`📧 [EMAIL] View emails at: https://ethereal.email`***REMOVED***;
-      console.log(`📧 [EMAIL] Login with the credentials above to see sent emails\n`***REMOVED***;
+      console.log(`📧 [EMAIL] Ethereal account created:`);
+      console.log(`📧 [EMAIL] Username: ${testAccount.user}`);
+      console.log(`📧 [EMAIL] Password: ${testAccount.pass}`);
+      console.log(`📧 [EMAIL] View emails at: https://ethereal.email`);
+      console.log(`📧 [EMAIL] Login with the credentials above to see sent emails\n`);
       
-    } catch (error***REMOVED*** {
-      console.error('❌ [EMAIL] Failed to create Ethereal account:', error.message***REMOVED***;
+    } catch (error) {
+      console.error('❌ [EMAIL] Failed to create Ethereal account:', error.message);
       this.transporter = null;
     }
   }
@@ -72,20 +72,20 @@ class EmailService {
    * @param {string} firstName - User's first name
    * @returns {Promise<boolean>} Success status
    */
-  async sendVerificationEmail(to, token, firstName = 'User'***REMOVED*** {
+  async sendVerificationEmail(to, token, firstName = 'User') {
     // Always log the token in development for testing
     const verificationUrl = `${config.APP_URL}/api/auth/verify-email?token=${token}`;
     
-    console.log(`\n📧 [EMAIL DEBUG] ==========================================`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] VERIFICATION EMAIL DETAILS:`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] To: ${to}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] Token: ${token}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] URL: ${verificationUrl}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] ==========================================\n`***REMOVED***;
+    console.log(`\n📧 [EMAIL DEBUG] ==========================================`);
+    console.log(`📧 [EMAIL DEBUG] VERIFICATION EMAIL DETAILS:`);
+    console.log(`📧 [EMAIL DEBUG] To: ${to}`);
+    console.log(`📧 [EMAIL DEBUG] Token: ${token}`);
+    console.log(`📧 [EMAIL DEBUG] URL: ${verificationUrl}`);
+    console.log(`📧 [EMAIL DEBUG] ==========================================\n`);
 
-    if (!this.transporter***REMOVED*** {
-      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.'***REMOVED***;
-      console.log(`📧 [EMAIL] Verification URL for ${to}: ${verificationUrl}`***REMOVED***;
+    if (!this.transporter) {
+      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.');
+      console.log(`📧 [EMAIL] Verification URL for ${to}: ${verificationUrl}`);
       return true; // Return true so registration doesn't fail
     }
 
@@ -141,7 +141,7 @@ class EmailService {
               <p>If you didn't create an account, you can safely ignore this email.</p>
             </div>
             <div class="footer">
-              <p>© ${new Date(***REMOVED***.getFullYear(***REMOVED***} Auth API. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
               <p>This is an automated message, please do not reply to this email.</p>
             </div>
           </div>
@@ -152,20 +152,20 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions***REMOVED***;
+      const info = await this.transporter.sendMail(mailOptions);
       
       // If using Ethereal, show the preview URL
-      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST***REMOVED*** {
-        const previewUrl = nodemailer.getTestMessageUrl(info***REMOVED***;
-        console.log(`📧 [EMAIL] Verification email sent to Ethereal:`***REMOVED***;
-        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`***REMOVED***;
+      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`📧 [EMAIL] Verification email sent to Ethereal:`);
+        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`);
       } else {
-        console.log(`📧 [EMAIL] Verification email sent to ${to}: ${info.messageId}`***REMOVED***;
+        console.log(`📧 [EMAIL] Verification email sent to ${to}: ${info.messageId}`);
       }
       
       return true;
-    } catch (error***REMOVED*** {
-      console.error('❌ [EMAIL] Failed to send verification email:', error.message***REMOVED***;
+    } catch (error) {
+      console.error('❌ [EMAIL] Failed to send verification email:', error.message);
       return false;
     }
   }
@@ -177,18 +177,18 @@ class EmailService {
    * @param {string} firstName - User's first name
    * @returns {Promise<boolean>} Success status
    */
-  async sendPasswordResetEmail(to, token, firstName = 'User'***REMOVED*** {
+  async sendPasswordResetEmail(to, token, firstName = 'User') {
     const resetUrl = `${config.APP_URL}/api/password/reset?token=${token}`;
     
-    console.log(`\n📧 [EMAIL DEBUG] ==========================================`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] PASSWORD RESET EMAIL DETAILS:`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] To: ${to}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] Token: ${token}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] URL: ${resetUrl}`***REMOVED***;
-    console.log(`📧 [EMAIL DEBUG] ==========================================\n`***REMOVED***;
+    console.log(`\n📧 [EMAIL DEBUG] ==========================================`);
+    console.log(`📧 [EMAIL DEBUG] PASSWORD RESET EMAIL DETAILS:`);
+    console.log(`📧 [EMAIL DEBUG] To: ${to}`);
+    console.log(`📧 [EMAIL DEBUG] Token: ${token}`);
+    console.log(`📧 [EMAIL DEBUG] URL: ${resetUrl}`);
+    console.log(`📧 [EMAIL DEBUG] ==========================================\n`);
 
-    if (!this.transporter***REMOVED*** {
-      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.'***REMOVED***;
+    if (!this.transporter) {
+      console.log('📧 [EMAIL] No transporter available. Email would be sent in production.');
       return true;
     }
 
@@ -252,7 +252,7 @@ class EmailService {
               <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
             </div>
             <div class="footer">
-              <p>© ${new Date(***REMOVED***.getFullYear(***REMOVED***} Auth API. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
               <p>This is an automated message, please do not reply to this email.</p>
             </div>
           </div>
@@ -263,19 +263,19 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions***REMOVED***;
+      const info = await this.transporter.sendMail(mailOptions);
       
-      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST***REMOVED*** {
-        const previewUrl = nodemailer.getTestMessageUrl(info***REMOVED***;
-        console.log(`📧 [EMAIL] Password reset email sent to Ethereal:`***REMOVED***;
-        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`***REMOVED***;
+      if (config.EMAIL_SMTP_HOST === 'smtp.ethereal.email' || !config.EMAIL_SMTP_HOST) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`📧 [EMAIL] Password reset email sent to Ethereal:`);
+        console.log(`📧 [EMAIL] Preview URL: ${previewUrl}`);
       } else {
-        console.log(`📧 [EMAIL] Password reset email sent to ${to}: ${info.messageId}`***REMOVED***;
+        console.log(`📧 [EMAIL] Password reset email sent to ${to}: ${info.messageId}`);
       }
       
       return true;
-    } catch (error***REMOVED*** {
-      console.error('❌ [EMAIL] Failed to send password reset email:', error.message***REMOVED***;
+    } catch (error) {
+      console.error('❌ [EMAIL] Failed to send password reset email:', error.message);
       return false;
     }
   }
@@ -286,11 +286,11 @@ class EmailService {
    * @param {string} firstName - User's first name
    * @returns {Promise<boolean>} Success status
    */
-  async sendPasswordChangedEmail(to, firstName = 'User'***REMOVED*** {
-    console.log(`📧 [EMAIL] Password change confirmation for ${to}`***REMOVED***;
+  async sendPasswordChangedEmail(to, firstName = 'User') {
+    console.log(`📧 [EMAIL] Password change confirmation for ${to}`);
 
-    if (!this.transporter***REMOVED*** {
-      console.log('📧 [EMAIL] No transporter available. Skipping email.'***REMOVED***;
+    if (!this.transporter) {
+      console.log('📧 [EMAIL] No transporter available. Skipping email.');
       return true;
     }
 
@@ -343,7 +343,7 @@ class EmailService {
               <p>Thank you for helping us keep your account secure.</p>
             </div>
             <div class="footer">
-              <p>© ${new Date(***REMOVED***.getFullYear(***REMOVED***} Auth API. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Auth API. All rights reserved.</p>
               <p>This is an automated message, please do not reply to this email.</p>
             </div>
           </div>
@@ -354,14 +354,14 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions***REMOVED***;
-      console.log(`📧 [EMAIL] Password change confirmation sent to ${to}: ${info.messageId}`***REMOVED***;
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`📧 [EMAIL] Password change confirmation sent to ${to}: ${info.messageId}`);
       return true;
-    } catch (error***REMOVED*** {
-      console.error('❌ [EMAIL] Failed to send password change confirmation:', error.message***REMOVED***;
+    } catch (error) {
+      console.error('❌ [EMAIL] Failed to send password change confirmation:', error.message);
       return false;
     }
   }
 }
 
-export default new EmailService(***REMOVED***;
+export default new EmailService();

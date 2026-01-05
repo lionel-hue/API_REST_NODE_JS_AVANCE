@@ -6,7 +6,7 @@
 
 - Node.js v22+ installé
 - npm
-- [Yaak](https://yaak.app/***REMOVED***
+- [Yaak](https://yaak.app/)
 
 ---
 
@@ -78,7 +78,7 @@ npm install express cors helmet dotenv zod pino pino-http pino-pretty jose argon
 | `pino` | Logger haute performance |
 | `pino-http` | Middleware de logging HTTP |
 | `pino-pretty` | Formatage des logs en dev |
-| `jose` | JWT (signatures, chiffrement***REMOVED*** |
+| `jose` | JWT (signatures, chiffrement) |
 | `argon2` | Hachage sécurisé des mots de passe |
 | `@prisma/client` | Client Prisma pour la BDD |
 | `@prisma/adapter-better-sqlite3` | Adapter SQLite pour Prisma |
@@ -106,7 +106,7 @@ Cela crée :
 
 - `prisma/schema.prisma` - schéma de la base de données
 - `.env` - fichier d'environnement
-- `prisma.config.ts` - configuration Prisma (à supprimer***REMOVED***
+- `prisma.config.ts` - configuration Prisma (à supprimer)
 
 Supprimer le fichier TypeScript et créer la version JavaScript :
 
@@ -128,9 +128,9 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: env('DATABASE_URL'***REMOVED***,
+    url: env('DATABASE_URL'),
   },
-}***REMOVED***
+})
 
 ```
 
@@ -153,23 +153,23 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement(***REMOVED******REMOVED***
+  id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
   name      String?
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   posts     Post[]
 }
 
 model Post {
-  id        Int      @id @default(autoincrement(***REMOVED******REMOVED***
+  id        Int      @id @default(autoincrement())
   title     String
   content   String?
-  published Boolean  @default(false***REMOVED***
+  published Boolean  @default(false)
   authorId  Int
-  author    User     @relation(fields: [authorId], references: [id]***REMOVED***
-  createdAt DateTime @default(now(***REMOVED******REMOVED***
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
@@ -185,8 +185,8 @@ model Post {
 ```
 express-course/
 ├── prisma/                  # Configuration de la base de données
-│   ├── schema.prisma        # Structure de vos données (modèles***REMOVED***
-│   └── dev.db               # Le fichier de base de données (SQLite***REMOVED***
+│   ├── schema.prisma        # Structure de vos données (modèles)
+│   └── dev.db               # Le fichier de base de données (SQLite)
 ├── src/                     # Le code source de votre application
 │   ├── controllers/         # Les chefs d'orchestre : reçoivent les requêtes et répondent
 │   │   └── user.controller.js
@@ -203,14 +203,14 @@ express-course/
 │   ├── middlewares/         # Filtres de passage : s'exécutent avant les routes
 │   │   ├── error-handler.js # Le filet de sécurité pour toutes les erreurs
 │   │   └── not-found.js     # Gère les routes qui n'existent pas
-│   ├── routes/              # Les adresses (points d'entrée***REMOVED*** de votre API
+│   ├── routes/              # Les adresses (points d'entrée) de votre API
 │   │   └── user.routes.js
-│   ├── schemas/             # Définition des règles de validation (Zod***REMOVED***
+│   ├── schemas/             # Définition des règles de validation (Zod)
 │   │   └── user.schema.js
-│   ├── services/            # Les ouvriers : font le vrai travail (calculs, BDD***REMOVED***
+│   ├── services/            # Les ouvriers : font le vrai travail (calculs, BDD)
 │   │   └── user.service.js
 │   └── index.js             # Le point de départ du serveur
-├── .env                     # Vos secrets et configurations (ne pas partager !***REMOVED***
+├── .env                     # Vos secrets et configurations (ne pas partager !)
 └── package.json             # Liste des outils et scripts du projet
 
 ```
@@ -289,8 +289,8 @@ import { PrismaClient } from "@prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 
-const adapter = new PrismaBetterSQLite3({ url: connectionString }***REMOVED***;
-const prisma = new PrismaClient({ adapter }***REMOVED***;
+const adapter = new PrismaBetterSQLite3({ url: connectionString });
+const prisma = new PrismaClient({ adapter });
 
 export default prisma;
 
@@ -315,13 +315,13 @@ export const logger = pino({
         target: "pino-pretty",
         options: { colorize: true },
       },
-}***REMOVED***;
+});
 
-export const httpLogger = pinoHttp({ logger }***REMOVED***;
+export const httpLogger = pinoHttp({ logger });
 
 ```
 
-> Pino est un outil qui affiche des messages dans votre terminal. C'est beaucoup plus puissant que console.log car il permet de classer les messages par importance (info, warn, error***REMOVED***.
+> Pino est un outil qui affiche des messages dans votre terminal. C'est beaucoup plus puissant que console.log car il permet de classer les messages par importance (info, warn, error).
 > 
 
 ### `src/lib/jwt.js`
@@ -329,19 +329,19 @@ export const httpLogger = pinoHttp({ logger }***REMOVED***;
 ```jsx
 import { SignJWT, jwtVerify } from "jose";
 
-const secret = new TextEncoder(***REMOVED***.encode(process.env.JWT_SECRET***REMOVED***;
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 const alg = "HS256";
 
-export async function signToken(payload, expiresIn = "7d"***REMOVED*** {
-  return new SignJWT(payload***REMOVED***
-    .setProtectedHeader({ alg }***REMOVED***
-    .setIssuedAt(***REMOVED***
-    .setExpirationTime(expiresIn***REMOVED***
-    .sign(secret***REMOVED***;
+export async function signToken(payload, expiresIn = "7d") {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(secret);
 }
 
-export async function verifyToken(token***REMOVED*** {
-  const { payload } = await jwtVerify(token, secret***REMOVED***;
+export async function verifyToken(token) {
+  const { payload } = await jwtVerify(token, secret);
   return payload;
 }
 ```
@@ -354,24 +354,24 @@ export async function verifyToken(token***REMOVED*** {
 ```jsx
 import argon2 from "argon2";
 
-export async function hashPassword(password***REMOVED*** {
-  return argon2.hash(password***REMOVED***;
+export async function hashPassword(password) {
+  return argon2.hash(password);
 }
 
-export async function verifyPassword(hash, password***REMOVED*** {
-  return argon2.verify(hash, password***REMOVED***;
+export async function verifyPassword(hash, password) {
+  return argon2.verify(hash, password);
 }
 ```
 
-> On ne stocke JAMAIS un mot de passe en clair dans une base de données. Argon2 transforme le mot de passe en une chaîne illisible (le "hash"***REMOVED*** pour que, même si la base de données est volée, les mots de passe restent secrets.
+> On ne stocke JAMAIS un mot de passe en clair dans une base de données. Argon2 transforme le mot de passe en une chaîne illisible (le "hash") pour que, même si la base de données est volée, les mots de passe restent secrets.
 > 
 
 ### `src/lib/exceptions.js`
 
 ```jsx
 export class HttpException extends Error {
-  constructor(statusCode, message, details = null***REMOVED*** {
-    super(message***REMOVED***;
+  constructor(statusCode, message, details = null) {
+    super(message);
     this.statusCode = statusCode;
     this.details = details;
     this.name = this.constructor.name;
@@ -379,74 +379,74 @@ export class HttpException extends Error {
 }
 
 export class BadRequestException extends HttpException {
-  constructor(message = "Bad Request", details = null***REMOVED*** {
-    super(400, message, details***REMOVED***;
+  constructor(message = "Bad Request", details = null) {
+    super(400, message, details);
   }
 }
 
 export class UnauthorizedException extends HttpException {
-  constructor(message = "Unauthorized"***REMOVED*** {
-    super(401, message***REMOVED***;
+  constructor(message = "Unauthorized") {
+    super(401, message);
   }
 }
 
 export class ForbiddenException extends HttpException {
-  constructor(message = "Forbidden"***REMOVED*** {
-    super(403, message***REMOVED***;
+  constructor(message = "Forbidden") {
+    super(403, message);
   }
 }
 
 export class NotFoundException extends HttpException {
-  constructor(message = "Not Found"***REMOVED*** {
-    super(404, message***REMOVED***;
+  constructor(message = "Not Found") {
+    super(404, message);
   }
 }
 
 export class ConflictException extends HttpException {
-  constructor(message = "Conflict"***REMOVED*** {
-    super(409, message***REMOVED***;
+  constructor(message = "Conflict") {
+    super(409, message);
   }
 }
 
 export class ValidationException extends HttpException {
-  constructor(errors***REMOVED*** {
-    super(400, "Validation Failed", errors***REMOVED***;
+  constructor(errors) {
+    super(400, "Validation Failed", errors);
   }
 }
 
 ```
 
-> Ces classes servent à signaler des erreurs spécifiques (ex: 404 si rien n'est trouvé, 401 si le mot de passe est faux***REMOVED***. Cela permet de répondre proprement au client.
+> Ces classes servent à signaler des erreurs spécifiques (ex: 404 si rien n'est trouvé, 401 si le mot de passe est faux). Cela permet de répondre proprement au client.
 > 
 
 ### `src/lib/async-handler.js`
 
 ```jsx
-export function asyncHandler(fn***REMOVED*** {
-  return (req, res, next***REMOVED*** => {
-    Promise.resolve(fn(req, res, next***REMOVED******REMOVED***.catch(next***REMOVED***;
+export function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
 
 ```
 
-> Une function (wrapper***REMOVED*** qui capture les erreurs async et les passe au middleware d'erreurs.
+> Une function (wrapper) qui capture les erreurs async et les passe au middleware d'erreurs.
 > 
 
-### `src/lib/validate.js` (Validation explicite***REMOVED***
+### `src/lib/validate.js` (Validation explicite)
 
 ```jsx
 import { ValidationException } from "#lib/exceptions";
 
 /**
  * Cette fonction vérifie que les données reçues respectent les règles prévues.
- * Si ce n'est pas le cas, elle lève une erreur (Exception***REMOVED*** que le serveur catchera.
+ * Si ce n'est pas le cas, elle lève une erreur (Exception) que le serveur catchera.
  */
-export function validateData(schema, data***REMOVED*** {
-  const result = schema.safeParse(data***REMOVED***;
+export function validateData(schema, data) {
+  const result = schema.safeParse(data);
 
-  if (!result.success***REMOVED*** {
-    throw new ValidationException(result.error.flatten(***REMOVED***.fieldErrors***REMOVED***;
+  if (!result.success) {
+    throw new ValidationException(result.error.flatten().fieldErrors);
   }
 
   return result.data;
@@ -463,7 +463,7 @@ export function validateData(schema, data***REMOVED*** {
 
 Les middlewares sont comme des portiers qui vérifient les requêtes avant qu'elles n'arrivent à destination.
 
-### `src/middlewares/error-handler.js` (Le filet de sécurité***REMOVED***
+### `src/middlewares/error-handler.js` (Le filet de sécurité)
 
 C'est ici que toutes les erreurs du projet finissent. Ce code attrape les exceptions et renvoie un message JSON propre à l'utilisateur, évitant ainsi que le serveur ne plante.
 
@@ -473,49 +473,49 @@ C'est ici que toutes les erreurs du projet finissent. Ce code attrape les except
 import { HttpException } from "#lib/exceptions";
 import { logger } from "#lib/logger";
 
-export function errorHandler(err, req, res, next***REMOVED*** {
-  if (err instanceof HttpException***REMOVED*** {
-    logger.warn({ err, path: req.path }, err.message***REMOVED***;
+export function errorHandler(err, req, res, next) {
+  if (err instanceof HttpException) {
+    logger.warn({ err, path: req.path }, err.message);
   } else {
-    logger.error({ err, path: req.path }, "Unhandled error"***REMOVED***;
+    logger.error({ err, path: req.path }, "Unhandled error");
   }
 
-  if (err instanceof HttpException***REMOVED*** {
-    return res.status(err.statusCode***REMOVED***.json({
+  if (err instanceof HttpException) {
+    return res.status(err.statusCode).json({
       success: false,
       error: err.message,
-      ...(err.details && { details: err.details }***REMOVED***,
-    }***REMOVED***;
+      ...(err.details && { details: err.details }),
+    });
   }
 
-  if (err.code === "P2002"***REMOVED*** {
-    return res.status(409***REMOVED***.json({
+  if (err.code === "P2002") {
+    return res.status(409).json({
       success: false,
       error: "Resource already exists",
-    }***REMOVED***;
+    });
   }
 
-  if (err.code === "P2025"***REMOVED*** {
-    return res.status(404***REMOVED***.json({
+  if (err.code === "P2025") {
+    return res.status(404).json({
       success: false,
       error: "Resource not found",
-    }***REMOVED***;
+    });
   }
 
-  if (err instanceof SyntaxError && err.status === 400***REMOVED*** {
-    return res.status(400***REMOVED***.json({
+  if (err instanceof SyntaxError && err.status === 400) {
+    return res.status(400).json({
       success: false,
       error: "Invalid JSON",
-    }***REMOVED***;
+    });
   }
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  res.status(500***REMOVED***.json({
+  res.status(500).json({
     success: false,
     error: isProduction ? "Internal Server Error" : err.message,
-    ...(!isProduction && { stack: err.stack }***REMOVED***,
-  }***REMOVED***;
+    ...(!isProduction && { stack: err.stack }),
+  });
 }
 
 ```
@@ -528,8 +528,8 @@ export function errorHandler(err, req, res, next***REMOVED*** {
 ```jsx
 import { NotFoundException } from "#lib/exceptions";
 
-export function notFoundHandler(req, res, next***REMOVED*** {
-  throw new NotFoundException(`Route ${req.method} ${req.path} not found`***REMOVED***;
+export function notFoundHandler(req, res, next) {
+  throw new NotFoundException(`Route ${req.method} ${req.path} not found`);
 }
 
 ```
@@ -547,15 +547,15 @@ export function notFoundHandler(req, res, next***REMOVED*** {
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  email: z.string(***REMOVED***.email("Email invalide"***REMOVED***,
-  password: z.string(***REMOVED***.min(8, "Minimum 8 caractères"***REMOVED***,
-  name: z.string(***REMOVED***.min(2***REMOVED***.optional(***REMOVED***,
-}***REMOVED***;
+  email: z.string().email("Email invalide"),
+  password: z.string().min(8, "Minimum 8 caractères"),
+  name: z.string().min(2).optional(),
+});
 
 export const loginSchema = z.object({
-  email: z.string(***REMOVED***.email("Email invalide"***REMOVED***,
-  password: z.string(***REMOVED***.min(1, "Mot de passe requis"***REMOVED***,
-}***REMOVED***;
+  email: z.string().email("Email invalide"),
+  password: z.string().min(1, "Mot de passe requis"),
+});
 
 ```
 
@@ -566,15 +566,15 @@ export const loginSchema = z.object({
 
 ---
 
-## 10. Data Transfer Objects (DTO***REMOVED***
+## 10. Data Transfer Objects (DTO)
 
-Le **DTO** agit comme un filtre de sécurité. Imaginez que votre base de données contient le mot de passe de l'utilisateur. Vous ne voulez jamais envoyer ce mot de passe par internet ! Le DTO permet de sélectionner uniquement les champs sûrs (id, email, name***REMOVED***.
+Le **DTO** agit comme un filtre de sécurité. Imaginez que votre base de données contient le mot de passe de l'utilisateur. Vous ne voulez jamais envoyer ce mot de passe par internet ! Le DTO permet de sélectionner uniquement les champs sûrs (id, email, name).
 
 ### `src/dto/user.dto.js`
 
 ```jsx
 export class UserDto {
-  constructor(user***REMOVED*** {
+  constructor(user) {
     this.id = user.id;
     this.email = user.email;
     this.name = user.name;
@@ -582,11 +582,11 @@ export class UserDto {
   }
 
   // Cette méthode permet de transformer soit un utilisateur, soit une liste d'utilisateurs
-  static transform(data***REMOVED*** {
-    if (Array.isArray(data***REMOVED******REMOVED*** {
-      return data.map((user***REMOVED*** => new UserDto(user***REMOVED******REMOVED***;
+  static transform(data) {
+    if (Array.isArray(data)) {
+      return data.map((user) => new UserDto(user));
     }
-    return new UserDto(data***REMOVED***;
+    return new UserDto(data);
   }
 }
 
@@ -594,9 +594,9 @@ export class UserDto {
 
 ---
 
-## 11. Services (La Logique Métier***REMOVED***
+## 11. Services (La Logique Métier)
 
-Le **Service** est l'ouvrier spécialisé. C'est lui qui parle à la base de données (via Prisma***REMOVED*** et qui contient les règles de gestion (ex: on ne peut pas créer deux utilisateurs avec le même email***REMOVED***.
+Le **Service** est l'ouvrier spécialisé. C'est lui qui parle à la base de données (via Prisma) et qui contient les règles de gestion (ex: on ne peut pas créer deux utilisateurs avec le même email).
 
 ### `src/services/user.service.js`
 
@@ -608,40 +608,40 @@ import { hashPassword, verifyPassword } from "#lib/password";
 import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
 
 export class UserService {
-  static async register(data***REMOVED*** {
+  static async register(data) {
     const { email, password, name } = data;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } }***REMOVED***;
-    if (existingUser***REMOVED*** {
-      throw new ConflictException("Email déjà utilisé"***REMOVED***;
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException("Email déjà utilisé");
     }
 
-    const hashedPassword = await hashPassword(password***REMOVED***;
+    const hashedPassword = await hashPassword(password);
 
     return prisma.user.create({
       data: { email, password: hashedPassword, name },
-    }***REMOVED***;
+    });
   }
 
-  static async login(email, password***REMOVED*** {
-    const user = await prisma.user.findUnique({ where: { email } }***REMOVED***;
+  static async login(email, password) {
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user || !(await verifyPassword(user.password, password***REMOVED******REMOVED******REMOVED*** {
-      throw new UnauthorizedException("Identifiants invalides"***REMOVED***;
+    if (!user || !(await verifyPassword(user.password, password))) {
+      throw new UnauthorizedException("Identifiants invalides");
     }
 
     return user;
   }
 
-  static async findAll(***REMOVED*** {
-    return prisma.user.findMany(***REMOVED***;
+  static async findAll() {
+    return prisma.user.findMany();
   }
 
-  static async findById(id***REMOVED*** {
-    const user = await prisma.user.findUnique({ where: { id } }***REMOVED***;
+  static async findById(id) {
+    const user = await prisma.user.findUnique({ where: { id } });
 
-    if (!user***REMOVED*** {
-      throw new NotFoundException("Utilisateur non trouvé"***REMOVED***;
+    if (!user) {
+      throw new NotFoundException("Utilisateur non trouvé");
     }
 
     return user;
@@ -659,7 +659,7 @@ export class UserService {
 
 Le **Contrôleur** reçoit la requête SQL/HTTP. Son travail est simple :
 
-1. **Valider** les données reçues (est-ce que l'email est correct ?***REMOVED***.
+1. **Valider** les données reçues (est-ce que l'email est correct ?).
 2. **Appeler** le bon service pour faire le travail.
 3. **Répondre** au client avec les données filtrées par le DTO.
 
@@ -673,46 +673,46 @@ import { validateData } from "#lib/validate";
 import { registerSchema, loginSchema } from "#schemas/user.schema";
 
 export class UserController {
-  static async register(req, res***REMOVED*** {
-    const validatedData = validateData(registerSchema, req.body***REMOVED***;
-    const user = await UserService.register(validatedData***REMOVED***;
-    const token = await signToken({ userId: user.id }***REMOVED***;
+  static async register(req, res) {
+    const validatedData = validateData(registerSchema, req.body);
+    const user = await UserService.register(validatedData);
+    const token = await signToken({ userId: user.id });
 
-    res.status(201***REMOVED***.json({
+    res.status(201).json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
+      user: UserDto.transform(user),
       token,
-    }***REMOVED***;
+    });
   }
 
-  static async login(req, res***REMOVED*** {
-    const validatedData = validateData(loginSchema, req.body***REMOVED***;
+  static async login(req, res) {
+    const validatedData = validateData(loginSchema, req.body);
     const { email, password } = validatedData;
 
-    const user = await UserService.login(email, password***REMOVED***;
-    const token = await signToken({ userId: user.id }***REMOVED***;
+    const user = await UserService.login(email, password);
+    const token = await signToken({ userId: user.id });
 
     res.json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
+      user: UserDto.transform(user),
       token,
-    }***REMOVED***;
+    });
   }
 
-  static async getAll(req, res***REMOVED*** {
-    const users = await UserService.findAll(***REMOVED***;
+  static async getAll(req, res) {
+    const users = await UserService.findAll();
     res.json({
       success: true,
-      users: UserDto.transform(users***REMOVED***,
-    }***REMOVED***;
+      users: UserDto.transform(users),
+    });
   }
 
-  static async getById(req, res***REMOVED*** {
-    const user = await UserService.findById(parseInt(req.params.id***REMOVED******REMOVED***;
+  static async getById(req, res) {
+    const user = await UserService.findById(parseInt(req.params.id));
     res.json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
-    }***REMOVED***;
+      user: UserDto.transform(user),
+    });
   }
 }
 
@@ -720,9 +720,9 @@ export class UserController {
 
 ---
 
-## 13. Routes (Les Adresses***REMOVED***
+## 13. Routes (Les Adresses)
 
-Le fichier de routes associe une adresse URL (ex: `/register`***REMOVED*** à une méthode du contrôleur. C'est le plan de votre API.
+Le fichier de routes associe une adresse URL (ex: `/register`) à une méthode du contrôleur. C'est le plan de votre API.
 
 ### `src/routes/user.routes.js`
 
@@ -731,15 +731,15 @@ import { Router } from "express";
 import { UserController } from "#controllers/user.controller";
 import { asyncHandler } from "#lib/async-handler";
 
-const router = Router(***REMOVED***;
+const router = Router();
 
 // Inscription et Connexion
-router.post("/register", asyncHandler(UserController.register***REMOVED******REMOVED***;
-router.post("/login", asyncHandler(UserController.login***REMOVED******REMOVED***;
+router.post("/register", asyncHandler(UserController.register));
+router.post("/login", asyncHandler(UserController.login));
 
 // Consultation de la liste ou d'un utilisateur
-router.get("/", asyncHandler(UserController.getAll***REMOVED******REMOVED***;
-router.get("/:id", asyncHandler(UserController.getById***REMOVED******REMOVED***;
+router.get("/", asyncHandler(UserController.getAll));
+router.get("/:id", asyncHandler(UserController.getById));
 
 export default router;
 
@@ -757,40 +757,40 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 
-dotenv.config(***REMOVED***;
+dotenv.config();
 
 import { logger, httpLogger } from "#lib/logger";
 import { errorHandler } from "#middlewares/error-handler";
 import { notFoundHandler } from "#middlewares/not-found";
 import userRouter from "#routes/user.routes";
 
-const app = express(***REMOVED***;
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares
-app.use(helmet(***REMOVED******REMOVED***;
-app.use(cors(***REMOVED******REMOVED***;
-app.use(httpLogger***REMOVED***;
-app.use(express.json(***REMOVED******REMOVED***;
+app.use(helmet());
+app.use(cors());
+app.use(httpLogger);
+app.use(express.json());
 
 // Routes
-app.get("/", (req, res***REMOVED*** => {
-  res.json({ success: true, message: "API Express opérationnelle" }***REMOVED***;
-}***REMOVED***;
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "API Express opérationnelle" });
+});
 
 // Utilisation des routes
-app.use("/users", userRouter***REMOVED***;
-app.use("/", userRouter***REMOVED***; // Pour garder /register et /login à la racine
+app.use("/users", userRouter);
+app.use("/", userRouter); // Pour garder /register et /login à la racine
 
 // 404 handler
-app.use(notFoundHandler***REMOVED***;
+app.use(notFoundHandler);
 
 // Global error handler
-app.use(errorHandler***REMOVED***;
+app.use(errorHandler);
 
-app.listen(PORT, (***REMOVED*** => {
-  logger.info(`Serveur démarré sur <http://localhost>:${PORT}`***REMOVED***;
-}***REMOVED***;
+app.listen(PORT, () => {
+  logger.info(`Serveur démarré sur <http://localhost>:${PORT}`);
+});
 
 ```
 

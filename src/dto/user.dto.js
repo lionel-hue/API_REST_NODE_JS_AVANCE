@@ -1,5 +1,5 @@
 export class UserDto {
-  constructor(user***REMOVED*** {
+  constructor(user) {
     this.id = user.id;
     this.email = user.email;
     this.name = user.name;
@@ -7,10 +7,10 @@ export class UserDto {
   }
 
   // Cette méthode permet de transformer soit un utilisateur, soit une liste d'utilisateurs
-  static transform(data***REMOVED*** {
-    if (Array.isArray(data***REMOVED******REMOVED*** {
-      return data.map((user***REMOVED*** => new UserDto(user***REMOVED******REMOVED***;
+  static transform(data) {
+    if (Array.isArray(data)) {
+      return data.map((user) => new UserDto(user));
     }
-    return new UserDto(data***REMOVED***;
+    return new UserDto(data);
   }
 }

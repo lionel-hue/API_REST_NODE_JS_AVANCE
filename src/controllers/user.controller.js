@@ -5,45 +5,45 @@ import { validateData } from "#lib/validate";
 import { registerSchema, loginSchema } from "#schemas/user.schema";
 
 export class UserController {
-  static async register(req, res***REMOVED*** {
-    const validatedData = validateData(registerSchema, req.body***REMOVED***;
-    const user = await UserService.register(validatedData***REMOVED***;
-    const token = await signToken({ userId: user.id }***REMOVED***;
+  static async register(req, res) {
+    const validatedData = validateData(registerSchema, req.body);
+    const user = await UserService.register(validatedData);
+    const token = await signToken({ userId: user.id });
 
-    res.status(201***REMOVED***.json({
+    res.status(201).json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
+      user: UserDto.transform(user),
       token,
-    }***REMOVED***;
+    });
   }
 
-  static async login(req, res***REMOVED*** {
-    const validatedData = validateData(loginSchema, req.body***REMOVED***;
+  static async login(req, res) {
+    const validatedData = validateData(loginSchema, req.body);
     const { email, password } = validatedData;
 
-    const user = await UserService.login(email, password***REMOVED***;
-    const token = await signToken({ userId: user.id }***REMOVED***;
+    const user = await UserService.login(email, password);
+    const token = await signToken({ userId: user.id });
 
     res.json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
+      user: UserDto.transform(user),
       token,
-    }***REMOVED***;
+    });
   }
 
-  static async getAll(req, res***REMOVED*** {
-    const users = await UserService.findAll(***REMOVED***;
+  static async getAll(req, res) {
+    const users = await UserService.findAll();
     res.json({
       success: true,
-      users: UserDto.transform(users***REMOVED***,
-    }***REMOVED***;
+      users: UserDto.transform(users),
+    });
   }
 
-  static async getById(req, res***REMOVED*** {
-    const user = await UserService.findById(parseInt(req.params.id***REMOVED******REMOVED***;
+  static async getById(req, res) {
+    const user = await UserService.findById(parseInt(req.params.id));
     res.json({
       success: true,
-      user: UserDto.transform(user***REMOVED***,
-    }***REMOVED***;
+      user: UserDto.transform(user),
+    });
   }
 }

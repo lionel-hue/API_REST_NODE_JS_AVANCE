@@ -136,7 +136,7 @@ POST /api/password/reset
 }
 ```
 
-### **5. Changer mot de passe (utilisateur connecté***REMOVED*****
+### **5. Changer mot de passe (utilisateur connecté)**
 ```http
 PUT /api/password/change
 ```
@@ -300,12 +300,12 @@ GET /api/oauth/github/callback
 | Code | Description |
 |------|-------------|
 | 200 | Succès |
-| 400 | Mauvaise requête (validation échouée***REMOVED*** |
-| 401 | Non authentifié (token manquant/invalide***REMOVED*** |
-| 403 | Interdit (permissions insuffisantes***REMOVED*** |
+| 400 | Mauvaise requête (validation échouée) |
+| 401 | Non authentifié (token manquant/invalide) |
+| 403 | Interdit (permissions insuffisantes) |
 | 404 | Ressource non trouvée |
-| 409 | Conflit (email déjà utilisé***REMOVED*** |
-| 429 | Trop de requêtes (rate limiting***REMOVED*** |
+| 409 | Conflit (email déjà utilisé) |
+| 429 | Trop de requêtes (rate limiting) |
 | 500 | Erreur serveur interne |
 
 ---
@@ -335,7 +335,7 @@ GET /api/oauth/github/callback
 }
 ```
 
-### RefreshToken (Sessions***REMOVED***
+### RefreshToken (Sessions)
 ```javascript
 {
   id: "uuid",
@@ -449,46 +449,46 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 
 // Tests basiques pour le membre 5
-describe('Profile Management Tests', (***REMOVED*** => {
+describe('Profile Management Tests', () => {
   let testUserId = null;
   let testAccessToken = null;
   let testRefreshToken = null;
 
-  before(async (***REMOVED*** => {
+  before(async () => {
     // Setup: Créer un utilisateur de test
-    console.log('Setting up test environment...'***REMOVED***;
-  }***REMOVED***;
+    console.log('Setting up test environment...');
+  });
 
-  after(async (***REMOVED*** => {
+  after(async () => {
     // Cleanup: Supprimer l'utilisateur de test
-    console.log('Cleaning up test environment...'***REMOVED***;
-  }***REMOVED***;
+    console.log('Cleaning up test environment...');
+  });
 
-  it('should create a test user', async (***REMOVED*** => {
+  it('should create a test user', async () => {
     // Test d'inscription
-    assert.ok(true, 'Test user should be created'***REMOVED***;
-  }***REMOVED***;
+    assert.ok(true, 'Test user should be created');
+  });
 
-  it('should login with test user', async (***REMOVED*** => {
+  it('should login with test user', async () => {
     // Test de connexion
-    assert.ok(true, 'Test user should be able to login'***REMOVED***;
-  }***REMOVED***;
+    assert.ok(true, 'Test user should be able to login');
+  });
 
-  it('should get user profile', async (***REMOVED*** => {
+  it('should get user profile', async () => {
     // Test GET /api/profile
-    assert.ok(true, 'Should retrieve user profile'***REMOVED***;
-  }***REMOVED***;
+    assert.ok(true, 'Should retrieve user profile');
+  });
 
-  it('should update user profile', async (***REMOVED*** => {
+  it('should update user profile', async () => {
     // Test PUT /api/profile
-    assert.ok(true, 'Should update user profile'***REMOVED***;
-  }***REMOVED***;
+    assert.ok(true, 'Should update user profile');
+  });
 
-  it('should delete user account', async (***REMOVED*** => {
+  it('should delete user account', async () => {
     // Test DELETE /api/profile
-    assert.ok(true, 'Should soft delete user account'***REMOVED***;
-  }***REMOVED***;
-}***REMOVED***;
+    assert.ok(true, 'Should soft delete user account');
+  });
+});
 
 // Exporter pour utilisation avec un test runner
 export default describe;
@@ -515,9 +515,9 @@ npm run test:coverage
 
 La documentation complète de l'API est disponible dans le dossier `docs/` :
 
-- [Documentation API](docs/API.md***REMOVED***
-- [Guide d'installation](docs/INSTALLATION.md***REMOVED***
-- [Schéma de base de données](docs/DATABASE.md***REMOVED***
+- [Documentation API](docs/API.md)
+- [Guide d'installation](docs/INSTALLATION.md)
+- [Schéma de base de données](docs/DATABASE.md)
 
 ## 🔧 Variables d'environnement supplémentaires
 
