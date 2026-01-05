@@ -1,3 +1,4 @@
+test.txt
 # Fichier .gitignore à ajouter
 
 ```gitignore
@@ -138,5 +139,3 @@ test-results/
 ```
 
 ---
-
-test.txt
