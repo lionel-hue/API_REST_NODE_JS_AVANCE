@@ -3,7 +3,7 @@ dotenv.config();
 
 export const config = {
   PORT: process.env.PORT || 3000,
-  NODE_ENV: process.env.NODE_ENV || 'development',
+  NODE_ENV: process.env.NODE_ENV ||  `http://localhost:${process.env.PORT || 3000}`,
   DATABASE_URL: process.env.DATABASE_URL,
   
   // 🔴 REMPLACER L'ANCIENNE CONFIGURATION JWT :
