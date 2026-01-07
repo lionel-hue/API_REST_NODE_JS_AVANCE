@@ -1,5 +1,5 @@
 import { UnauthorizedException } from "#lib/exceptions";
-import { verifyToken } from "#lib/jwt";
+import { verifyAccessToken } from "#lib/jwt";  // ⭐ IMPORTANT : Changé !
 import { logger } from "#lib/logger";
 import prisma from "#lib/prisma";
 
@@ -44,9 +44,9 @@ export async function auth(req, res, next) {
     // Vérifier et décoder le token JWT
     let payload;
     try {
-      payload = await verifyToken(token);
+      payload = await verifyAccessToken(token); // ⭐ Utiliser verifyAccessToken
     } catch (error) {
-      logger.warn("Token JWT invalide ou expiré");
+      logger.warn(`Token JWT invalide ou expiré: ${error.message}`);
       throw new UnauthorizedException("Token invalide ou expiré");
     }
 

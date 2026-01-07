@@ -1,6 +1,6 @@
-  import prisma from "#lib/prisma";
+import prisma from "#lib/prisma";
 import { hashPassword, verifyPassword } from "#lib/password";
-import { signAccessToken, signRefreshToken, verifyToken } from "#lib/jwt";
+import { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from "#lib/jwt";
 import { ConflictException, UnauthorizedException, NotFoundException } from "#lib/exceptions";
 import { config } from "#config/env";
 import verificationService from './verification.service.js';
@@ -91,14 +91,11 @@ export class AuthService {
       const verificationResult = await verificationService.createAndSendVerification(user);
       console.log(`✅ [AUTH SERVICE] Verification token created and email sent`);
 
-      // Log the token for testing in development
-      if (config.NODE_ENV === 'development' && verificationResult.token) {
-        console.log(`\n🔥 [DEV MODE] VERIFICATION TOKEN FOR TESTING:`);
-        console.log(`🔥 Email: ${email}`);
-        console.log(`🔥 Token: ${verificationResult.token}`);
-        console.log(`🔥 Verify URL: ${config.APP_URL}/api/auth/verify-email?token=${verificationResult.token}`);
-        console.log(`🔥 Curl: curl -X POST ${config.APP_URL}/api/auth/verify-email -H "Content-Type: application/json" -d '{"token": "${verificationResult.token}"}'`);
-        console.log(`\n`);
+      // 🔒 SECURITÉ: Ne JAMAIS logger le token de vérification, même en développement
+      // Le token doit être uniquement dans l'email (EXIGENCE)
+      if (config.NODE_ENV === 'development') {
+        console.log(`✅ [AUTH SERVICE] Verification email sent to ${email}`);
+        // Seulement confirmer l'envoi, pas montrer le token
       }
     } catch (error) {
       console.log(`❌ [AUTH SERVICE] Verification error: ${error.message}`);
@@ -243,36 +240,80 @@ export class AuthService {
    * @param {string} userId - ID de l'utilisateur
    * @returns {Promise<void>}
    */
+  // ✅ PAR CETTE NOUVELLE VERSION :
+
+  /** 
+   * Déconnexion d'un utilisateur
+   * INVALIDATION COMPLÈTE DU REFRESH_TOKEN (EXIGENCE)
+   * @param {string} accessToken - Access token à blacklister
+   * @param {string} refreshToken - Refresh token à révoquer OBLIGATOIREMENT
+   * @param {string} userId - ID de l'utilisateur
+   * @returns {Promise<void>}
+   */
   static async logout(accessToken, refreshToken, userId) {
     try {
-      // Vérifier et décoder l'access token pour obtenir l'expiration
-      const decoded = await verifyToken(accessToken);
-      const expiresAt = new Date(decoded.exp * 1000);
+      console.log(`\n🔵 [AUTH SERVICE] Logout request for user: ${userId}`);
 
-      // Blacklister l'access token
-      await prisma.blacklistedAccessToken.create({
-        data: {
-          token: accessToken,
-          userId,
-          expiresAt,
-        },
-      });
+      // 1. BLACKLISTER L'ACCESS TOKEN (si fourni)
+      if (accessToken) {
+        try {
+          const decoded = await verifyAccessToken(accessToken);
+          const expiresAt = new Date(decoded.exp * 1000);
+
+          await prisma.blacklistedAccessToken.create({
+            data: {
+              token: accessToken,
+              userId,
+              expiresAt,
+            },
+          });
+          console.log(`✅ [AUTH SERVICE] Access token blacklisted`);
+        } catch (error) {
+          // Si le token est déjà expiré ou invalide, on continue quand même
+          console.log(`⚠️ [AUTH SERVICE] Access token already expired or invalid`);
+        }
+      }
+
+      // 2. RÉVOQUER LE REFRESH TOKEN - EXIGENCE PRINCIPALE
+      if (refreshToken) {
+        // Première méthode: révoquer le refresh token spécifique
+        const revoked = await prisma.refreshToken.updateMany({
+          where: {
+            token: refreshToken,
+            userId,
+            revokedAt: null,
+          },
+          data: {
+            revokedAt: new Date(),
+          },
+        });
+
+        if (revoked.count > 0) {
+          console.log(`✅ [AUTH SERVICE] Refresh token revoked: ${refreshToken.substring(0, 20)}...`);
+        } else {
+          console.log(`⚠️ [AUTH SERVICE] Refresh token already revoked or not found`);
+        }
+
+        // Deuxième méthode: révoquer TOUS les refresh tokens de l'utilisateur (déconnexion globale)
+        await prisma.refreshToken.updateMany({
+          where: {
+            userId,
+            revokedAt: null,
+          },
+          data: {
+            revokedAt: new Date(),
+          },
+        });
+        console.log(`✅ [AUTH SERVICE] All refresh tokens revoked for user`);
+      } else {
+        console.warn(`⚠️ [AUTH SERVICE] No refresh token provided for logout`);
+        throw new Error("Refresh token requis pour la déconnexion");
+      }
+
+      console.log(`✅ [AUTH SERVICE] Logout completed successfully for user: ${userId}`);
     } catch (error) {
-      // Si le token est déjà expiré, on peut ignorer l'erreur
-    }
-
-    // Révoquer le refresh token
-    if (refreshToken) {
-      await prisma.refreshToken.updateMany({
-        where: {
-          token: refreshToken,
-          userId,
-          revokedAt: null,
-        },
-        data: {
-          revokedAt: new Date(),
-        },
-      });
+      console.error(`❌ [AUTH SERVICE] Logout error: ${error.message}`);
+      throw new Error("Échec de la déconnexion");
     }
   }
 
@@ -312,7 +353,7 @@ export class AuthService {
     // Vérifier le token JWT
     let decoded;
     try {
-      decoded = await verifyToken(refreshToken);
+       decoded = await verifyRefreshToken(refreshToken);
       console.log(`✅ [AUTH SERVICE] JWT token verified, userId: ${decoded.userId}`);
     } catch (error) {
       console.log(`❌ [AUTH SERVICE] JWT verification failed: ${error.message}`);

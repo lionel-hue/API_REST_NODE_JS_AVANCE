@@ -66,25 +66,25 @@ router.get('/debug/verification-tokens', async (req, res) => {
 router.get('/get-token/:email', async (req, res) => {
   try {
     const { email } = req.params;
-    
+
     console.log(`🔍 [DEBUG] Getting token for: ${email}`);
-    
+
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, emailVerifiedAt: true, firstName: true },
     });
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found',
       });
     }
-    
+
     const verificationToken = await prisma.verificationToken.findFirst({
       where: { userId: user.id },
     });
-    
+
     const response = {
       success: true,
       user: {
@@ -94,7 +94,7 @@ router.get('/get-token/:email', async (req, res) => {
         verifiedAt: user.emailVerifiedAt,
       },
     };
-    
+
     if (verificationToken) {
       response.verificationToken = {
         exists: true,
@@ -107,14 +107,14 @@ router.get('/get-token/:email', async (req, res) => {
     } else {
       response.verificationToken = {
         exists: false,
-        message: user.emailVerifiedAt 
-          ? 'User is already verified' 
+        message: user.emailVerifiedAt
+          ? 'User is already verified'
           : 'No verification token found. Try resending verification email.',
       };
     }
-    
+
     res.json(response);
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -127,29 +127,29 @@ router.get('/get-token/:email', async (req, res) => {
 router.post('/test-verify', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
       return res.status(400).json({
         success: false,
         error: 'Email is required',
       });
     }
-    
+
     console.log(`🔍 [TEST] Testing verification for: ${email}`);
-    
+
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, firstName: true, emailVerifiedAt: true },
     });
-    
+
     if (!user) {
       return res.json({
         success: false,
         error: 'User not found',
       });
     }
-    
+
     // Check if already verified
     if (user.emailVerifiedAt) {
       return res.json({
@@ -158,11 +158,11 @@ router.post('/test-verify', async (req, res) => {
         verifiedAt: user.emailVerifiedAt,
       });
     }
-    
+
     // Create verification token
     const verificationService = await import('#services/verification.service.js');
     const result = await verificationService.default.createAndSendVerification(user);
-    
+
     res.json({
       success: true,
       message: 'Verification test completed',
@@ -172,11 +172,50 @@ router.post('/test-verify', async (req, res) => {
       },
       verification: result,
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
       error: error.message,
+    });
+  }
+});
+
+
+// Add this route to test email sending
+router.post('/test-send', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+
+    console.log(`📧 [TEST] Testing email to: ${email}`);
+
+    // Import email service
+    const emailService = await import('#services/email.service');
+
+    // Send a test verification email
+    const result = await emailService.default.sendVerificationEmail(
+      email,
+      'test-token-1234567890',
+      'Test User'
+    );
+
+    res.json({
+      success: true,
+      message: 'Test email sent (check console for details)',
+      emailSent: result,
+      note: 'Check your email inbox and server logs for verification URL'
+    });
+  } catch (error) {
+    console.error(`❌ [TEST] Email test error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

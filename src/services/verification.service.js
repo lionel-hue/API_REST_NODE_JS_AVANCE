@@ -21,7 +21,7 @@ class VerificationService {
    */
   async createAndSendVerification(user) {
     console.log(`\n🔵 [VERIFICATION] Starting email verification for: ${user.email}`);
-    
+
     // Check if user is already verified
     if (user.emailVerifiedAt) {
       console.log(`❌ [VERIFICATION] User ${user.email} is already verified at ${user.emailVerifiedAt}`);
@@ -70,7 +70,8 @@ class VerificationService {
     return {
       success: true,
       message: 'Verification email sent. Please check your inbox.',
-      token: config.NODE_ENV === 'development' ? token : undefined, // Only return in dev
+      // 🔒 SECURITÉ: NE JAMAIS renvoyer le token dans la réponse (EXIGENCE)
+      // Le token doit être uniquement dans l'email
     };
   }
 
@@ -81,7 +82,7 @@ class VerificationService {
    */
   async verifyEmail(token) {
     console.log(`\n🔵 [VERIFICATION] Verifying token: ${token}`);
-    
+
     // Find the verification token
     const verificationToken = await prisma.verificationToken.findUnique({
       where: { token },
@@ -90,13 +91,13 @@ class VerificationService {
 
     if (!verificationToken) {
       console.log(`❌ [VERIFICATION] Token not found in database`);
-      
+
       // Debug: List all tokens to help debugging
       const allTokens = await prisma.verificationToken.findMany({
         select: { token: true, userId: true },
       });
       console.log(`🔍 [VERIFICATION] Available tokens: ${allTokens.length}`);
-      
+
       throw new BadRequestException('Invalid verification token');
     }
 
@@ -156,7 +157,7 @@ class VerificationService {
    */
   async resendVerification(email) {
     console.log(`\n🔵 [VERIFICATION] Resending verification for: ${email}`);
-    
+
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
